@@ -28,13 +28,12 @@ type Query struct {
 
 // RankedItem represents one ranked content item from agent.
 type RankedItem struct {
-	ID                string  `json:"id"`
-	Type              string  `json:"type"`
-	Platform          string  `json:"platform"`
-	URL               string  `json:"url"`
-	Title             string  `json:"title"`
-	ManifestationNote string  `json:"manifestation_note"`
-	Score             float64 `json:"score"`
+	ID       string  `json:"id"`
+	Type     string  `json:"type"`
+	Platform string  `json:"platform"`
+	URL      string  `json:"url"`
+	Title    string  `json:"title"`
+	Score    float64 `json:"score"`
 }
 
 // UnderstandGoalRequest is the /agent/understand-soul request payload.
@@ -87,10 +86,9 @@ type ChatRequest struct {
 
 // ChatResponse is the /agent/chat response payload.
 type ChatResponse struct {
-	ChatResponse     string  `json:"chat_response"`
-	NeedsNewContent  bool    `json:"needs_new_content"`
-	ManifestationTip string  `json:"manifestation_tip"`
-	SearchQueries    []Query `json:"search_queries"`
+	ChatResponse    string  `json:"chat_response"`
+	NeedsNewContent bool    `json:"needs_new_content"`
+	SearchQueries   []Query `json:"search_queries"`
 }
 
 // Client wraps Node agent API calls.

@@ -14,9 +14,7 @@ type ChatRequest struct {
 
 // ChatResponse represents chat + optional content.
 type ChatResponse struct {
-	ChatResponse     string        `json:"chat_response"`
-	NeedsNewContent  bool          `json:"needs_new_content"`
-	NewContent       []ContentItem `json:"new_content,omitempty"`
-	ManifestationTip string        `json:"manifestation_tip,omitempty"`
+	ChatResponse    string        `json:"chat_response"`
+	NeedsNewContent bool          `json:"needs_new_content"`
+	NewContent      []ContentItem `json:"new_content,omitempty"`
 }
-
