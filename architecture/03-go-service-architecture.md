@@ -6,7 +6,7 @@ flowchart TD
   APILayer[API Layer]
   Auth[Firebase token verification]
   Orchestrator[Concurrent Search Orchestrator]
-  NodeAgent[Node Agent /agent/*]
+  PyAgent[Python Service /agent/*]
   PG[(PostgreSQL)]
   RDS[(Redis)]
   ExtAPIs[(YouTube DuckDuckGo Pinterest Reddit)]
@@ -20,9 +20,9 @@ flowchart TD
   APILayer --> Orchestrator
 
   Orchestrator -->|goroutines to APIs| ExtAPIs
-  Orchestrator -->|raw results and profile| NodeAgent
+  Orchestrator -->|raw results and profile| PyAgent
 
-  NodeAgent -->|ranked content and queries| Orchestrator
+  PyAgent -->|ranked content and queries| Orchestrator
 
   Orchestrator --> APILayer
   APILayer --> Resp[HTTP response ranked mixed content]

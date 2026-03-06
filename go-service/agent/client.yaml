@@ -1,6 +1,6 @@
 version: 1
-service: node-agent
-description: Contract between Go service and Node agent for soul understanding, chat, query generation, and ranking.
+service: python-service
+description: Contract between Go service and Python agent for soul understanding, chat, query generation, and ranking.
 
 base_url: /agent
 

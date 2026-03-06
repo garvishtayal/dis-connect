@@ -11,10 +11,10 @@ flowchart LR
 
   GoSvc -->|verify token and map firebase_uid| Postgres[(PostgreSQL)]
 
-  GoSvc -->|/agent endpoints| NodeAgent[Node Agent LLM]
+  GoSvc -->|/agent endpoints| PyAgent[Python Service Agent and Scraping]
 
   GoSvc --> Redis[(Redis)]
 
   GoSvc --> ExtAPIs[(YouTube DuckDuckGo Pinterest Reddit)]
-  NodeAgent --> Groq[(Groq LLM)]
+  PyAgent --> Groq[(Groq LLM)]
 ```
