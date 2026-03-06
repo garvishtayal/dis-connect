@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/garvishtayal/dis-connect/go-service/internal/models"
 )
@@ -66,4 +67,21 @@ RETURNING id;
 		return "", err
 	}
 	return id, nil
+}
+
+// IsOnboardingCompletedByFirebaseUID returns onboarding status for a Firebase user.
+func (r *UserRepository) IsOnboardingCompletedByFirebaseUID(ctx context.Context, firebaseUID string) (bool, error) {
+	const query = `
+SELECT onboarding_completed
+FROM users
+WHERE firebase_uid = $1;
+`
+	var completed bool
+	if err := r.db.DB.QueryRowContext(ctx, query, firebaseUID).Scan(&completed); err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, err
+	}
+	return completed, nil
 }

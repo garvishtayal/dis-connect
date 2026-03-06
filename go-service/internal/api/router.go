@@ -16,6 +16,7 @@ type Router struct {
 	preferences  *handlers.PreferencesHandler
 	health       *handlers.HealthHandler
 	firebaseAuth gin.HandlerFunc
+	onboarding   gin.HandlerFunc
 }
 
 // NewRouter wires handlers into a Router.
@@ -27,6 +28,7 @@ func NewRouter(
 	preferences *handlers.PreferencesHandler,
 	health *handlers.HealthHandler,
 	firebaseAuth gin.HandlerFunc,
+	onboarding gin.HandlerFunc,
 ) *Router {
 	return &Router{
 		auth:         auth,
@@ -36,6 +38,7 @@ func NewRouter(
 		preferences:  preferences,
 		health:       health,
 		firebaseAuth: firebaseAuth,
+		onboarding:   onboarding,
 	}
 }
 
@@ -60,17 +63,20 @@ func (r *Router) RegisterRoutes(engine *gin.Engine) {
 		userGroup.POST("", r.user.CreateUser)
 	}
 
-	chatGroup := protectedGroup.Group("/chat")
+	onboardedGroup := protectedGroup.Group("")
+	onboardedGroup.Use(r.onboarding)
+
+	chatGroup := onboardedGroup.Group("/chat")
 	{
 		chatGroup.POST("", r.chat.HandleChat)
 	}
 
-	contentGroup := protectedGroup.Group("/content")
+	contentGroup := onboardedGroup.Group("/content")
 	{
 		contentGroup.GET("", r.content.GetContent)
 	}
 
-	prefGroup := protectedGroup.Group("/preferences")
+	prefGroup := onboardedGroup.Group("/preferences")
 	{
 		prefGroup.POST("", r.preferences.UpdatePreferences)
 	}

@@ -61,6 +61,7 @@ func BuildRouter() (*gin.Engine, error) {
 	contentSvc := service.NewContentService()
 	preferenceSvc := service.NewPreferenceService()
 	firebaseAuth := middleware.FirebaseAuth(tokenValidator)
+	onboardingRequired := middleware.OnboardingRequired(userRepo)
 
 	// Bind handlers to services.
 	authHandler := handlers.NewAuthHandler(authSvc)
@@ -79,6 +80,7 @@ func BuildRouter() (*gin.Engine, error) {
 		preferencesHandler,
 		healthHandler,
 		firebaseAuth,
+		onboardingRequired,
 	)
 	apiRouter.RegisterRoutes(router)
 
