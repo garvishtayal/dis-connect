@@ -27,7 +27,7 @@ func (s *UserService) CreateUser(ctx context.Context, firebaseUID string, req mo
 
 	soul := strings.TrimSpace(req.InitialPrompt)
 	if soul == "" {
-		soul = "Manifest your next big role"
+		return nil, fmt.Errorf("initial prompt is required")
 	}
 
 	userID, err := s.userRepo.SetInitialPromptByFirebaseUID(ctx, firebaseUID, soul)

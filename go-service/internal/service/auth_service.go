@@ -54,14 +54,12 @@ func (s *AuthService) signIn(ctx context.Context, req models.AuthRequest, expect
 
 	if s.userRepo != nil {
 		// Persist or update the user row on successful Firebase sign-in.
-		initialPrompt := "Manifest your next big role"
 		_, err = s.userRepo.UpsertAuthUser(ctx, &models.User{
 			FirebaseUID:   token.UID,
 			Email:         extractEmail(token),
 			DisplayName:   extractDisplayName(token),
 			PhotoURL:      extractPhotoURL(token),
 			Provider:      provider,
-			InitialPrompt: initialPrompt,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("upsert auth user: %w", err)
