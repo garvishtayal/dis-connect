@@ -56,7 +56,7 @@ func BuildRouter() (*gin.Engine, error) {
 
 	// Build service layer dependencies.
 	authSvc := service.NewAuthService(tokenValidator, userRepo)
-	userSvc := service.NewUserService()
+	userSvc := service.NewUserService(userRepo)
 	chatSvc := service.NewChatService()
 	contentSvc := service.NewContentService()
 	preferenceSvc := service.NewPreferenceService()

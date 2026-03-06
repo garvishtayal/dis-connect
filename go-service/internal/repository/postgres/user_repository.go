@@ -85,3 +85,21 @@ WHERE firebase_uid = $1;
 	}
 	return completed, nil
 }
+
+// SetInitialPromptByFirebaseUID stores initial prompt and marks onboarding complete.
+func (r *UserRepository) SetInitialPromptByFirebaseUID(ctx context.Context, firebaseUID, initialPrompt string) (string, error) {
+	const query = `
+INSERT INTO users (firebase_uid, initial_prompt, onboarding_completed)
+VALUES ($1, $2, TRUE)
+ON CONFLICT (firebase_uid)
+DO UPDATE SET
+	initial_prompt = EXCLUDED.initial_prompt,
+	onboarding_completed = TRUE
+RETURNING id;
+`
+	var id string
+	if err := r.db.DB.QueryRowContext(ctx, query, firebaseUID, initialPrompt).Scan(&id); err != nil {
+		return "", err
+	}
+	return id, nil
+}

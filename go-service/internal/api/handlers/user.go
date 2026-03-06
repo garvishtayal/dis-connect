@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/garvishtayal/dis-connect/go-service/internal/api/middleware"
 	"github.com/garvishtayal/dis-connect/go-service/internal/models"
 	"github.com/garvishtayal/dis-connect/go-service/internal/service"
 )
@@ -21,13 +22,19 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 
 // CreateUser handles POST /api/users.
 func (h *UserHandler) CreateUser(c *gin.Context) {
+	firebaseUID, err := middleware.RequireFirebaseUID(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	var req models.CreateUserRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err = c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 
-	resp, err := h.userService.CreateUser(c.Request.Context(), req)
+	resp, err := h.userService.CreateUser(c.Request.Context(), firebaseUID, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
 		return
@@ -35,4 +42,3 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, resp)
 }
-
