@@ -1,0 +1,17 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local tooling / editor cruft
+*.log
+*.sqlite3
+.vscode/
+.idea/
+.mypy_cache/
+.pytest_cache/
