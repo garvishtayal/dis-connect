@@ -14,6 +14,7 @@ import (
 	"github.com/garvishtayal/dis-connect/go-service/internal/api/middleware"
 	"github.com/garvishtayal/dis-connect/go-service/internal/auth"
 	"github.com/garvishtayal/dis-connect/go-service/internal/config"
+	"github.com/garvishtayal/dis-connect/go-service/internal/orchestrator"
 	"github.com/garvishtayal/dis-connect/go-service/internal/repository/postgres"
 	"github.com/garvishtayal/dis-connect/go-service/internal/service"
 )
@@ -58,7 +59,8 @@ func BuildRouter() (*gin.Engine, error) {
 	authSvc := service.NewAuthService(tokenValidator, userRepo)
 	userSvc := service.NewUserService(userRepo)
 	chatSvc := service.NewChatService()
-	contentSvc := service.NewContentService()
+	orchestratorClient := orchestrator.NewClient(cfg.AgentBaseURL)
+	contentSvc := service.NewContentService(orchestratorClient)
 	preferenceSvc := service.NewPreferenceService()
 	firebaseAuth := middleware.FirebaseAuth(tokenValidator)
 	onboardingRequired := middleware.OnboardingRequired(userRepo)
