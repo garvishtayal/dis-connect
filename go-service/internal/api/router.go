@@ -1,0 +1,77 @@
+package api
+
+import (
+	"github.com/gin-gonic/gin"
+
+	"github.com/garvishtayal/dis-connect/go-service/internal/api/handlers"
+	"github.com/garvishtayal/dis-connect/go-service/internal/api/middleware"
+)
+
+// Router holds all HTTP handlers.
+type Router struct {
+	auth         *handlers.AuthHandler
+	user         *handlers.UserHandler
+	chat         *handlers.ChatHandler
+	content      *handlers.ContentHandler
+	preferences  *handlers.PreferencesHandler
+	health       *handlers.HealthHandler
+	firebaseAuth gin.HandlerFunc
+}
+
+// NewRouter wires handlers into a Router.
+func NewRouter(
+	auth *handlers.AuthHandler,
+	user *handlers.UserHandler,
+	chat *handlers.ChatHandler,
+	content *handlers.ContentHandler,
+	preferences *handlers.PreferencesHandler,
+	health *handlers.HealthHandler,
+	firebaseAuth gin.HandlerFunc,
+) *Router {
+	return &Router{
+		auth:         auth,
+		user:         user,
+		chat:         chat,
+		content:      content,
+		preferences:  preferences,
+		health:       health,
+		firebaseAuth: firebaseAuth,
+	}
+}
+
+// RegisterRoutes attaches all routes to Gin.
+func (r *Router) RegisterRoutes(engine *gin.Engine) {
+	engine.GET("/healthz", r.health.Health)
+
+	apiGroup := engine.Group("/api")
+	apiGroup.Use(middleware.RateLimit())
+
+	authGroup := apiGroup.Group("/auth")
+	{
+		authGroup.POST("/google", r.auth.SignInWithGoogle)
+		authGroup.POST("/apple", r.auth.SignInWithApple)
+	}
+
+	protectedGroup := apiGroup.Group("")
+	protectedGroup.Use(r.firebaseAuth)
+
+	userGroup := protectedGroup.Group("/users")
+	{
+		userGroup.POST("", r.user.CreateUser)
+	}
+
+	chatGroup := protectedGroup.Group("/chat")
+	{
+		chatGroup.POST("", r.chat.HandleChat)
+	}
+
+	contentGroup := protectedGroup.Group("/content")
+	{
+		contentGroup.GET("", r.content.GetContent)
+	}
+
+	prefGroup := protectedGroup.Group("/preferences")
+	{
+		prefGroup.POST("", r.preferences.UpdatePreferences)
+	}
+}

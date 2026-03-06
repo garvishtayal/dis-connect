@@ -1,0 +1,43 @@
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs/temp
+*.log
+*.tmp
+tmp/
+.cache/
+
+# Environment/secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*service-account*.json
+
+# Node
+node_modules/
+dist/
+build/
+.next/
+.nuxt/
+coverage/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Go (root-level artifacts)
+bin/
+*.out
+coverage.out
+
+# Local docs/notes
+product-notes/

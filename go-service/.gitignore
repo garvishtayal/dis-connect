@@ -1,0 +1,42 @@
+# Build outputs
+/bin/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.out
+*.coverprofile
+
+# Go workspace/cache files
+go.work
+go.work.sum
+
+# Logs and temp
+*.log
+*.tmp
+tmp/
+
+# Environment files (keep examples)
+.env
+.env.*
+!.env.example
+
+# Local secrets and credentials
+/secret/
+/configs/
+firebase-service-account.json
+*service-account*.json
+*.pem
+*.key
+*.p12
+
+# IDE/editor
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store

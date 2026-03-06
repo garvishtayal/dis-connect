@@ -1,0 +1,65 @@
+version: 1
+service: node-agent
+description: Contract between Go service and Node agent for soul understanding, chat, query generation, and ranking.
+
+base_url: /agent
+
+endpoints:
+  understand_goal:
+    method: POST
+    path: /agent/understand-soul
+    request:
+      user_id: string
+      initial_prompt: string
+    response:
+      user_id: string
+      soul: string
+
+  generate_queries:
+    method: POST
+    path: /agent/generate-queries
+    request:
+      user_id: string
+      user_goal: string
+      user_profile: object
+      recent_chats: array
+    response:
+      queries:
+        - platform: string
+          query: string
+
+  rank:
+    method: POST
+    path: /agent/rank
+    request:
+      user_id: string
+      user_goal: string
+      user_profile: object
+      raw_results: array
+    response:
+      items:
+        - id: string
+          type: string
+          platform: string
+          url: string
+          title: string
+          manifestation_note: string
+          score: number
+
+  chat:
+    method: POST
+    path: /agent/chat
+    request:
+      user_id: string
+      message: string
+      user_goal: string
+      user_profile: object
+      chat_history: array
+      current_content_ids: array
+    response:
+      chat_response: string
+      needs_new_content: boolean
+      manifestation_tip: string
+      search_queries:
+        - platform: string
+          query: string
