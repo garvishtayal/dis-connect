@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/garvishtayal/dis-connect/go-service/internal/models"
 )
 
 const (
@@ -23,16 +25,6 @@ const (
 type Query struct {
 	Platform string `json:"platform"`
 	Query    string `json:"query"`
-}
-
-// RankedItem represents one ranked content item from agent.
-type RankedItem struct {
-	ID       string  `json:"id"`
-	Type     string  `json:"type"`
-	Platform string  `json:"platform"`
-	URL      string  `json:"url"`
-	Title    string  `json:"title"`
-	Score    float64 `json:"score"`
 }
 
 // UnderstandSoulRequest is the /agent/understand-soul request payload.
@@ -59,7 +51,7 @@ type GenerateContentRequest struct {
 
 // GenerateContentResponse is the /agent/generate-content response payload.
 type GenerateContentResponse struct {
-	Items []RankedItem `json:"items"`
+	Items []models.ContentItem `json:"items"`
 }
 
 // ChatRequest is the /agent/chat request payload.
