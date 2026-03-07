@@ -1,13 +1,11 @@
 # dis-connect Python Service
 
 This service is the **agent / content engine** used by the Go API.  
-It exposes HTTP endpoints that the Go service calls for:
+It exposes **3 agent endpoints** that the Go service calls:
 
-- Understanding the user's **soul / goal**
-- Generating **search queries** for external platforms
-- **Ranking** raw content
-- Handling **chat** logic
-- Simple **content orchestration** for fetching and shaping items
+- **Understand soul**: derive soul from the user's initial prompt
+- **Generate content**: return content items (query + scrape + mix + rank internally)
+- **Chat**: LLM reply and `needs_new_content` flag
 
 The service is built with **FastAPI** and is intentionally simple and modular.
 
@@ -67,32 +65,22 @@ Use this file if you want to add global middleware, CORS, etc.
 Defines all **HTTP endpoints** exposed by this service.
 
 - **`GET /health`**
-  - Simple health check. Returns `{"status": "ok"}`.
+  - Health check. Returns `{"status": "ok"}`.
 
 - **`POST /agent/understand-soul`**
   - Request: `UnderstandSoulRequest` (`user_id`, `initial_prompt`).
   - Response: `UnderstandSoulResponse` (`user_id`, `soul`).
-  - Current behavior: trims and echoes the initial prompt as the soul.
+  - Behavior: trims and echoes the initial prompt as the soul (placeholder for LLM).
 
-- **`POST /agent/generate-queries`**
-  - Request: `GenerateQueriesRequest` (`user_id`, `user_goal`, `user_profile`, `recent_chats`).
-  - Response: `GenerateQueriesResponse` (list of `Query` objects).
-  - Current behavior: returns simple placeholder queries for YouTube, Pinterest, and Reddit.
-
-- **`POST /agent/rank`**
-  - Request: `RankRequest` (`user_id`, `user_goal`, `user_profile`, `raw_results`).
-  - Response: `RankResponse` (list of ranked `ContentItem`s).
-  - Current behavior: normalizes each raw item, fills defaults, and sorts by score.
+- **`POST /agent/generate-content`**
+  - Request: `GenerateContentRequest` (`user_id`, `user_goal`, `user_profile`, `recent_chats`, `current_content_ids`, `limit`).
+  - Response: `GenerateContentResponse` (`items`: list of `ContentItem`).
+  - Behavior: generates queries, runs orchestrator (scrape + mix + dedupe), returns up to `limit` items (placeholder).
 
 - **`POST /agent/chat`**
-  - Request: `ChatRequest` (user, message, goal, profile, history, current content IDs).
-  - Response: `ChatResponse` (chat text, `needs_new_content`, optional `search_queries`, optional `manifestation_tip`).
-  - Current behavior: builds a simple LLM prompt, uses a placeholder LLM client, and always returns a generic reply with `needs_new_content = true`.
-
-- **`POST /orchestrator/fetch-content`**
-  - Request: `FetchContentRequest` (user, goal, profile, recent chats, queries).
-  - Response: `FetchContentResponse` (list of `ContentItem`s).
-  - Current behavior: passes queries to the orchestrator and returns placeholder content items.
+  - Request: `ChatRequest` (user_id, message, user_goal, user_profile, chat_history, current_content_ids).
+  - Response: `ChatResponse` (`chat_response`, `needs_new_content`, optional `search_queries`).
+  - Behavior: LLM placeholder; returns a generic reply and `needs_new_content = true`.
 
 This module is the **main integration surface** for the Go service.
 
@@ -105,17 +93,16 @@ This module is the **main integration surface** for the Go service.
 Pydantic models describing the **agent contract** with the Go service.
 
 - **`UnderstandSoulRequest` / `UnderstandSoulResponse`**: payloads for `/agent/understand-soul`.
-- **`Query`**: a single search query (`platform`, `query`).
-- **`GenerateQueriesRequest` / `GenerateQueriesResponse`**: payloads for `/agent/generate-queries`.
-- **`RankRequest` / `RankResponse`**: payloads for `/agent/rank`.
-- **`RankedItem`**: structured ranked item (id, type, platform, url, title, manifestation_note, score).
+- **`GenerateContentRequest`**: request for `/agent/generate-content` (user_id, user_goal, user_profile, recent_chats, current_content_ids, limit).
+- **`Query`**: a single search query (`platform`, `query`); used optionally in `ChatResponse.search_queries`.
 - **`ChatRequest` / `ChatResponse`**: payloads for `/agent/chat`.
 
 These types mirror the Go `agent.Client` contracts.
 
 ### `app/models/content.py`
 
-- **`ContentItem`**: normalized content item used inside the Python service and returned from the orchestrator.
+- **`ContentItem`**: matches Go `models.ContentItem` (id, type, platform, url, title, score, metadata).
+- **`GenerateContentResponse`**: response for `/agent/generate-content` (`items`: list of `ContentItem`).
 
 ---
 

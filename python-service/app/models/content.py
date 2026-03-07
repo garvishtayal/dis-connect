@@ -1,13 +1,19 @@
+from typing import Any
+
 from pydantic import BaseModel
 
 
-# Represents a single normalized content item for the manifestation feed.
+# Single content item; matches Go models.ContentItem (id, type, platform, url, title, score, metadata).
 class ContentItem(BaseModel):
     id: str
     type: str
     platform: str
     url: str
     title: str
-    manifestation_note: str
-    score: float
+    score: float = 0.0
+    metadata: dict[str, Any] | None = None
 
+
+# Response body for /agent/generate-content.
+class GenerateContentResponse(BaseModel):
+    items: list[ContentItem]

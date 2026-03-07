@@ -16,8 +16,8 @@ async def fetch_content(queries: Sequence[Query]) -> list[ContentItem]:
                 platform=query.platform,
                 url=f"https://example.com/{query.platform}/{index+1}",
                 title=f"Placeholder content for {query.query}",
-                manifestation_note="Placeholder manifestation note.",
                 score=0.5,
+                metadata={"manifestation_note": "Placeholder manifestation note."},
             )
         )
     mixed = mixer.mix(items)
