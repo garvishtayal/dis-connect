@@ -1,1 +1,1 @@
-# Scrapers: pinterest, instagram, youtube (placeholder implementations).
+# Scrapers: pinterest (pinscrape), instagram (instaloader), youtube (yt-dlp); each returns raw dicts for pipeline.

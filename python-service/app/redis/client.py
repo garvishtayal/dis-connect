@@ -48,18 +48,18 @@ async def get_preferences(user_id: str) -> dict[str, Any]:
         return {}
 
 
-def _search_hash(platform: str, query: str) -> str:
-    """Returns a short hash for cache key search:{hash}."""
-    raw = f"{platform}:{query}".encode()
+def _search_hash(platform: str, query: str, content_type: str = "") -> str:
+    """Returns a short hash for cache key search:{hash}; content_type disambiguates YouTube/Instagram."""
+    raw = f"{platform}:{query}:{content_type}".encode()
     return hashlib.sha256(raw).hexdigest()[:16]
 
 
-async def get_search_cached(platform: str, query: str) -> list[dict[str, Any]] | None:
-    """Reads cached raw results for this query. Returns None on miss or error."""
+async def get_search_cached(platform: str, query: str, content_type: str = "") -> list[dict[str, Any]] | None:
+    """Reads cached raw results for this query (and content_type when applicable). Returns None on miss or error."""
     try:
         client = get_client()
         try:
-            key = KEY_SEARCH.replace("{query_hash}", _search_hash(platform, query))
+            key = KEY_SEARCH.replace("{query_hash}", _search_hash(platform, query, content_type))
             data = await client.get(key)
             if not data:
                 return None
@@ -70,12 +70,12 @@ async def get_search_cached(platform: str, query: str) -> list[dict[str, Any]] |
         return None
 
 
-async def set_search_cached(platform: str, query: str, results: list[dict[str, Any]]) -> None:
-    """Writes raw results to cache with TTL 1 hour."""
+async def set_search_cached(platform: str, query: str, results: list[dict[str, Any]], content_type: str = "") -> None:
+    """Writes raw results to cache with TTL 1 hour; content_type included in key for YouTube/Instagram."""
     try:
         client = get_client()
         try:
-            key = KEY_SEARCH.replace("{query_hash}", _search_hash(platform, query))
+            key = KEY_SEARCH.replace("{query_hash}", _search_hash(platform, query, content_type))
             await client.set(key, json.dumps(results), ex=TTL_SEARCH_SECONDS)
         finally:
             await client.aclose()
