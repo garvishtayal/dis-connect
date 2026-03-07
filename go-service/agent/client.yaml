@@ -33,6 +33,7 @@ endpoints:
           url: string
           title: string
           score: number
+          metadata: object
 
   chat:
     method: POST

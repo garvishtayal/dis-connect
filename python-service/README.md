@@ -18,6 +18,7 @@ python-service/
 ├── app/
 │   ├── api/
 │   │   └── routes.py
+│   ├── config.py
 │   ├── llm/
 │   │   ├── client.py
 │   │   ├── context_builder.py
@@ -29,6 +30,9 @@ python-service/
 │   │   ├── deduplicator.py
 │   │   ├── mixer.py
 │   │   └── orchestrator.py
+│   ├── redis/
+│   │   ├── __init__.py
+│   │   └── client.py
 │   ├── scrapers/
 │   │   ├── instagram.py
 │   │   ├── pinterest.py
@@ -47,7 +51,21 @@ python-service/
 
 - **`main.py`**: Thin entrypoint that imports `app.main.app` so `uvicorn main:app` works.
 - **`Dockerfile`**: Builds a small image running the FastAPI app with Uvicorn.
-- **`requirements.txt`**: Python dependencies (FastAPI, Uvicorn).
+- **`requirements.txt`**: Python dependencies (FastAPI, Uvicorn, Redis).
+
+---
+
+## Redis
+
+Same Redis instance as Go. Set **`REDIS_URL`** (default `redis://localhost:6379`).
+
+- **`app/config.py`**: Reads `REDIS_URL` from env.
+- **`app/redis/client.py`**:
+  - **`get_client()`**: Returns a Redis client (async).
+  - **`get_shown_urls(user_id)`**: Returns set of already-shown URLs (for dedup). Go writes; Python reads.
+  - **`get_preferences(user_id)`**: Returns user preferences dict (e.g. content_filter). Go reads+writes; Python reads.
+
+If Redis is unavailable, the helpers return empty set/dict so the app still runs.
 
 ---
 
