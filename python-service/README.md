@@ -29,15 +29,16 @@ python-service/
 │   ├── orchestrator/
 │   │   ├── deduplicator.py
 │   │   ├── mixer.py
-│   │   └── orchestrator.py
+│   │   ├── orchestrator.py
+│   │   ├── query_generator.py
+│   │   ├── rank_placeholder.py
+│   │   └── scrape_fetch.py
 │   ├── redis/
 │   │   ├── __init__.py
 │   │   └── client.py
 │   ├── scrapers/
 │   │   ├── instagram.py
 │   │   ├── pinterest.py
-│   │   ├── reddit.py
-│   │   ├── unsplash.py
 │   │   └── youtube.py
 │   └── main.py
 ├── Dockerfile
@@ -64,8 +65,9 @@ Same Redis instance as Go. Set **`REDIS_URL`** (default `redis://localhost:6379`
   - **`get_client()`**: Returns a Redis client (async).
   - **`get_shown_urls(user_id)`**: Returns set of already-shown URLs (for dedup). Go writes; Python reads.
   - **`get_preferences(user_id)`**: Returns user preferences dict (e.g. content_filter). Go reads+writes; Python reads.
+  - **`get_search_cached(platform, query)`** / **`set_search_cached(platform, query, results)`**: Search cache `search:{query_hash}` (TTL 1 hour).
 
-If Redis is unavailable, the helpers return empty set/dict so the app still runs.
+If Redis is unavailable, the helpers return empty set/dict or None so the app still runs.
 
 ---
 
@@ -93,7 +95,7 @@ Defines all **HTTP endpoints** exposed by this service.
 - **`POST /agent/generate-content`**
   - Request: `GenerateContentRequest` (`user_id`, `user_goal`, `user_profile`, `recent_chats`, `current_content_ids`, `limit`).
   - Response: `GenerateContentResponse` (`items`: list of `ContentItem`).
-  - Behavior: generates queries, runs orchestrator (scrape + mix + dedupe), returns up to `limit` items (placeholder).
+  - Behavior: full orchestrator flow (generate queries in ratio → cache-or-scrape concurrent → dedupe with Redis shown → rank placeholder → filter score ≥ 0.6 → mix by ratio → return up to `limit`).
 
 - **`POST /agent/chat`**
   - Request: `ChatRequest` (user_id, message, user_goal, user_profile, chat_history, current_content_ids).
@@ -144,42 +146,36 @@ These helpers keep prompt-building and LLM calls isolated from the HTTP layer.
 
 ## `app/orchestrator/`
 
-Coordinates content fetching, mixing, and deduplication.
+Full content flow: generate queries in ratio → cache-or-scrape (concurrent) → dedupe (Redis) → rank (placeholder) → filter score ≥ 0.6 → mix by ratio → return items.
 
 - **`orchestrator.py`**
-  - **`fetch_content(queries)`**: async function that:
-    - Takes a list of `Query` objects.
-    - Currently creates **placeholder** `ContentItem`s (one per query).
-    - Runs them through `mixer.mix()` and `deduplicator.deduplicate()`.
-    - Returns the final list of `ContentItem`s.
-  - This is the main place to plug in real scrapers + ranking later.
+  - **`fetch_content(user_id, user_goal, user_profile, limit=40)`**: main entry; runs the full pipeline and returns ranked `ContentItem`s.
+
+- **`query_generator.py`**
+  - **`generate_queries_ratio(user_goal)`**: returns queries in ratio (e.g. 4 Pinterest + 3 Instagram photo + 3 Instagram reel + 3 YouTube Shorts + 3 YouTube video).
+
+- **`scrape_fetch.py`**
+  - **`fetch_one_query(q)`**: for one query, returns cached raw results or scrapes then caches (Redis `search:{query_hash}`).
+
+- **`rank_placeholder.py`**
+  - **`rank_raw_items(raw, user_goal, user_profile)`**: placeholder rank (no LLM); assigns score 0.8 to each item.
 
 - **`mixer.py`**
-  - **`mix(items)`**: sorts `ContentItem`s by score, highest first.
+  - **`mix_by_ratio(items)`**: mixes by type: 16 image (8 Pinterest + 8 Instagram), 16 short (8 Reels + 8 Shorts), 8 video (YouTube).
 
 - **`deduplicator.py`**
-  - **`deduplicate(items)`**: removes duplicate items by URL while preserving order.
+  - **`deduplicate(items)`**: in-memory URL dedup.
+  - **`filter_already_shown_raw(raw, shown_urls)`**: filters out URLs in Redis `user:{id}:shown`.
 
 ---
 
 ## `app/scrapers/`
 
-One module per external content source.  
-All functions are **placeholders** for now and should be replaced with real HTTP logic.
+Pinterest, Instagram, YouTube only (placeholder mock data). Each returns a list of raw dicts (`id`, `type`, `platform`, `url`, `title`).
 
-- **`instagram.py`**
-- **`pinterest.py`**
-- **`reddit.py`**
-- **`unsplash.py`**
-- **`youtube.py`**
-
-Each defines:
-
-- **`async def search(query: str) -> list[dict[str, Any]]`**
-  - Currently returns an empty list.
-  - In the future, should:
-    - Call the real API (or search endpoint).
-    - Map results into a simple dict shape that can be turned into `ContentItem`s.
+- **`pinterest.search(query)`** → mock image items.
+- **`instagram.search(query, content_type="image"|"short")`** → mock photo or reel items.
+- **`youtube.search(query, content_type="short"|"video")`** → mock shorts or video items.
 
 ---
 

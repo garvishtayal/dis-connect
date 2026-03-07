@@ -4,7 +4,6 @@ from app.models.chat import (
     ChatRequest,
     ChatResponse,
     GenerateContentRequest,
-    Query,
     UnderstandSoulRequest,
     UnderstandSoulResponse,
 )
@@ -20,17 +19,15 @@ def understand_soul(req: UnderstandSoulRequest) -> UnderstandSoulResponse:
     return UnderstandSoulResponse(user_id=req.user_id, soul=soul)
 
 
-# Handles /agent/generate-content: queries + scrape + mix + rank, return items (placeholder).
+# Handles /agent/generate-content: full flow (queries, cache-or-scrape, dedupe, rank, mix).
 async def generate_content(req: GenerateContentRequest) -> list[ContentItem]:
-    goal = req.user_goal.strip() if req.user_goal else "career growth"
-    queries = [
-        Query(platform="youtube", query=goal),
-        Query(platform="pinterest", query=goal),
-        Query(platform="reddit", query=goal),
-    ]
-    items = await orchestrator_fetch_content(queries)
     limit = max(0, min(req.limit, 100))
-    return items[:limit]
+    return await orchestrator_fetch_content(
+        user_id=req.user_id,
+        user_goal=req.user_goal or "career growth",
+        user_profile=req.user_profile,
+        limit=limit,
+    )
 
 
 # Handles /agent/chat: LLM reply and whether new content is needed.

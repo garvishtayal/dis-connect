@@ -28,10 +28,11 @@ class GenerateContentRequest(BaseModel):
 # Response for /agent/generate-content uses list[ContentItem] from content.py.
 
 
-# Single search query (optional in ChatResponse).
+# Single search query; content_type used for ratio mix (image/short/video).
 class Query(BaseModel):
     platform: str
     query: str
+    content_type: str = "image"  # "image" | "short" | "video"
 
 
 # Request body for /agent/chat.

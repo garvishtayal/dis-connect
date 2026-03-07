@@ -1,3 +1,5 @@
+import hashlib
+import json
 from typing import Any
 
 import redis.asyncio as aioredis
@@ -7,8 +9,10 @@ from app.config import REDIS_URL
 # Key patterns (match product-notes/redis.txt).
 KEY_SHOWN = "user:{user_id}:shown"
 KEY_PREFERENCES = "user:{user_id}:preferences"
+KEY_SEARCH = "search:{query_hash}"
 TTL_SHOWN_DAYS = 7
 TTL_PREFERENCES_DAYS = 30
+TTL_SEARCH_SECONDS = 3600  # 1 hour
 
 
 def get_client() -> aioredis.Redis:
@@ -42,3 +46,38 @@ async def get_preferences(user_id: str) -> dict[str, Any]:
             await client.aclose()
     except Exception:
         return {}
+
+
+def _search_hash(platform: str, query: str) -> str:
+    """Returns a short hash for cache key search:{hash}."""
+    raw = f"{platform}:{query}".encode()
+    return hashlib.sha256(raw).hexdigest()[:16]
+
+
+async def get_search_cached(platform: str, query: str) -> list[dict[str, Any]] | None:
+    """Reads cached raw results for this query. Returns None on miss or error."""
+    try:
+        client = get_client()
+        try:
+            key = KEY_SEARCH.replace("{query_hash}", _search_hash(platform, query))
+            data = await client.get(key)
+            if not data:
+                return None
+            return json.loads(data)
+        finally:
+            await client.aclose()
+    except Exception:
+        return None
+
+
+async def set_search_cached(platform: str, query: str, results: list[dict[str, Any]]) -> None:
+    """Writes raw results to cache with TTL 1 hour."""
+    try:
+        client = get_client()
+        try:
+            key = KEY_SEARCH.replace("{query_hash}", _search_hash(platform, query))
+            await client.set(key, json.dumps(results), ex=TTL_SEARCH_SECONDS)
+        finally:
+            await client.aclose()
+    except Exception:
+        pass
