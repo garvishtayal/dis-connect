@@ -1,11 +1,11 @@
 version: 1
 service: python-service
-description: Contract between Go service and Python agent for soul understanding, chat, query generation, and ranking.
+description: Contract between Go service and Python agent for soul understanding, content generation, and chat.
 
 base_url: /agent
 
 endpoints:
-  understand_goal:
+  understand_soul:
     method: POST
     path: /agent/understand-soul
     request:
@@ -15,27 +15,16 @@ endpoints:
       user_id: string
       soul: string
 
-  generate_queries:
+  generate_content:
     method: POST
-    path: /agent/generate-queries
+    path: /agent/generate-content
     request:
       user_id: string
       user_goal: string
       user_profile: object
       recent_chats: array
-    response:
-      queries:
-        - platform: string
-          query: string
-
-  rank:
-    method: POST
-    path: /agent/rank
-    request:
-      user_id: string
-      user_goal: string
-      user_profile: object
-      raw_results: array
+      current_content_ids: array
+      limit: number
     response:
       items:
         - id: string
@@ -43,7 +32,6 @@ endpoints:
           platform: string
           url: string
           title: string
-          manifestation_note: string
           score: number
 
   chat:
@@ -59,7 +47,6 @@ endpoints:
     response:
       chat_response: string
       needs_new_content: boolean
-      manifestation_tip: string
       search_queries:
         - platform: string
           query: string

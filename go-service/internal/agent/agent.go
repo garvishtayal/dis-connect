@@ -13,8 +13,7 @@ import (
 
 const (
 	pathUnderstandSoul  = "/agent/understand-soul"
-	pathGenerateQueries = "/agent/generate-queries"
-	pathRank            = "/agent/rank"
+	pathGenerateContent = "/agent/generate-content"
 	pathChat            = "/agent/chat"
 )
 
@@ -36,41 +35,30 @@ type RankedItem struct {
 	Score    float64 `json:"score"`
 }
 
-// UnderstandGoalRequest is the /agent/understand-soul request payload.
-type UnderstandGoalRequest struct {
+// UnderstandSoulRequest is the /agent/understand-soul request payload.
+type UnderstandSoulRequest struct {
 	UserID        string `json:"user_id"`
 	InitialPrompt string `json:"initial_prompt"`
 }
 
-// UnderstandGoalResponse is the /agent/understand-soul response payload.
-type UnderstandGoalResponse struct {
+// UnderstandSoulResponse is the /agent/understand-soul response payload.
+type UnderstandSoulResponse struct {
 	UserID string `json:"user_id"`
 	Soul   string `json:"soul"`
 }
 
-// GenerateQueriesRequest is the /agent/generate-queries request payload.
-type GenerateQueriesRequest struct {
-	UserID      string         `json:"user_id"`
-	UserGoal    string         `json:"user_goal"`
-	UserProfile map[string]any `json:"user_profile"`
-	RecentChats []any          `json:"recent_chats"`
+// GenerateContentRequest is the /agent/generate-content request payload.
+type GenerateContentRequest struct {
+	UserID            string         `json:"user_id"`
+	UserGoal          string         `json:"user_goal"`
+	UserProfile       map[string]any `json:"user_profile"`
+	RecentChats       []any          `json:"recent_chats"`
+	CurrentContentIDs []string       `json:"current_content_ids"`
+	Limit             int            `json:"limit"`
 }
 
-// GenerateQueriesResponse is the /agent/generate-queries response payload.
-type GenerateQueriesResponse struct {
-	Queries []Query `json:"queries"`
-}
-
-// RankRequest is the /agent/rank request payload.
-type RankRequest struct {
-	UserID      string         `json:"user_id"`
-	UserGoal    string         `json:"user_goal"`
-	UserProfile map[string]any `json:"user_profile"`
-	RawResults  []any          `json:"raw_results"`
-}
-
-// RankResponse is the /agent/rank response payload.
-type RankResponse struct {
+// GenerateContentResponse is the /agent/generate-content response payload.
+type GenerateContentResponse struct {
 	Items []RankedItem `json:"items"`
 }
 
@@ -91,7 +79,7 @@ type ChatResponse struct {
 	SearchQueries   []Query `json:"search_queries"`
 }
 
-// Client wraps Node agent API calls.
+// Client wraps Python agent API calls.
 type Client struct {
 	baseURL string
 	http    *http.Client
@@ -109,28 +97,19 @@ func NewClient(baseURL string) *Client {
 	}
 }
 
-// UnderstandGoal calls /agent/understand-soul.
-func (c *Client) UnderstandGoal(ctx context.Context, req UnderstandGoalRequest) (*UnderstandGoalResponse, error) {
-	var resp UnderstandGoalResponse
+// UnderstandSoul calls /agent/understand-soul.
+func (c *Client) UnderstandSoul(ctx context.Context, req UnderstandSoulRequest) (*UnderstandSoulResponse, error) {
+	var resp UnderstandSoulResponse
 	if err := c.postJSON(ctx, pathUnderstandSoul, req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
 }
 
-// GenerateQueries calls /agent/generate-queries.
-func (c *Client) GenerateQueries(ctx context.Context, req GenerateQueriesRequest) (*GenerateQueriesResponse, error) {
-	var resp GenerateQueriesResponse
-	if err := c.postJSON(ctx, pathGenerateQueries, req, &resp); err != nil {
-		return nil, err
-	}
-	return &resp, nil
-}
-
-// Rank calls /agent/rank.
-func (c *Client) Rank(ctx context.Context, req RankRequest) (*RankResponse, error) {
-	var resp RankResponse
-	if err := c.postJSON(ctx, pathRank, req, &resp); err != nil {
+// GenerateContent calls /agent/generate-content.
+func (c *Client) GenerateContent(ctx context.Context, req GenerateContentRequest) (*GenerateContentResponse, error) {
+	var resp GenerateContentResponse
+	if err := c.postJSON(ctx, pathGenerateContent, req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
