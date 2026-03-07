@@ -144,7 +144,7 @@ Simple, swappable LLM helpers.
   - This is where you would wire an actual LLM provider (e.g. LiteLLM, OpenAI, Groq).
 
 - **`prompts.py`**
-  - **`build_goal_prompt(user_goal, user_profile)`**: builds a simple text prompt from the goal and optional profile dict.
+  - **`build_chat_prompt(message, initial_prompt, enhanced_profile, chat_history)`** and other build_*_prompt helpers per use case (see prompts.py).
 
 - **`context_builder.py`**
   - **`build_content_context(items)`**: converts a list of `ContentItem`s into a compact string (currently just joins titles).

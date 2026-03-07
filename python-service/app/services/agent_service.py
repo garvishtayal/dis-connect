@@ -1,5 +1,5 @@
 from app.llm.client import LLMClient
-from app.llm.prompts import build_goal_prompt
+from app.llm.prompts import build_chat_prompt
 from app.models.chat import (
     ChatRequest,
     ChatResponse,
@@ -34,7 +34,9 @@ async def generate_content(req: GenerateContentRequest) -> list[ContentItem]:
 
 # Handles /agent/chat: LLM reply and whether new content is needed.
 def chat(req: ChatRequest) -> ChatResponse:
-    prompt = build_goal_prompt(req.user_goal, req.user_profile)
+    initial_prompt = req.user_goal or ""
+    enhanced_profile = str(req.user_profile) if req.user_profile else ""
+    prompt = build_chat_prompt(req.message, initial_prompt, enhanced_profile, req.chat_history)
     _ = _llm_client.generate_text(prompt)
     return ChatResponse(
         chat_response="Got it. I can fetch content aligned with your goal.",
