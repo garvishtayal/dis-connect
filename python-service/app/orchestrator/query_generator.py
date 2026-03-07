@@ -1,9 +1,16 @@
+from typing import Any
+
 from app.models.chat import Query
 
 
-# Generates queries in ratio: 40% photos, 40% shorts/reels, 20% videos (placeholder counts).
-def generate_queries_ratio(user_goal: str) -> list[Query]:
-    goal = (user_goal or "career growth").strip()
+# Generates queries in ratio from initial_prompt + enhanced_profile + preferences + recent_chats (placeholder).
+def generate_queries_ratio(
+    initial_prompt: str,
+    enhanced_profile: str,
+    preferences: dict[str, Any] | None,
+    recent_chats: list[Any] | None,
+) -> list[Query]:
+    goal = f"{initial_prompt or ''} {enhanced_profile or ''}".strip() or "career growth"
     queries: list[Query] = []
     for i in range(4):
         queries.append(Query(platform="pinterest", query=goal, content_type="image"))

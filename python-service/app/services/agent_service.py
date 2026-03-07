@@ -19,13 +19,15 @@ def understand_soul(req: UnderstandSoulRequest) -> UnderstandSoulResponse:
     return UnderstandSoulResponse(user_id=req.user_id, soul=soul)
 
 
-# Handles /agent/generate-content: full flow (queries, cache-or-scrape, dedupe, rank, mix).
+# Handles /agent/generate-content: full flow (queries from initial_prompt + enhanced_profile + preferences + recent_chats).
 async def generate_content(req: GenerateContentRequest) -> list[ContentItem]:
     limit = max(0, min(req.limit, 100))
     return await orchestrator_fetch_content(
         user_id=req.user_id,
-        user_goal=req.user_goal or "career growth",
-        user_profile=req.user_profile,
+        initial_prompt=req.initial_prompt or "",
+        enhanced_profile=req.enhanced_profile or "",
+        preferences=req.preferences,
+        recent_chats=req.recent_chats,
         limit=limit,
     )
 

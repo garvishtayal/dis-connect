@@ -41,12 +41,12 @@ type UnderstandSoulResponse struct {
 
 // GenerateContentRequest is the /agent/generate-content request payload.
 type GenerateContentRequest struct {
-	UserID            string         `json:"user_id"`
-	UserGoal          string         `json:"user_goal"`
-	UserProfile       map[string]any `json:"user_profile"`
-	RecentChats       []any          `json:"recent_chats"`
-	CurrentContentIDs []string       `json:"current_content_ids"`
-	Limit             int            `json:"limit"`
+	UserID          string         `json:"user_id"`
+	InitialPrompt   string         `json:"initial_prompt"`
+	EnhancedProfile string         `json:"enhanced_profile"`
+	Preferences     map[string]any `json:"preferences"`
+	RecentChats     []any          `json:"recent_chats"`
+	Limit           int            `json:"limit"`
 }
 
 // GenerateContentResponse is the /agent/generate-content response payload.

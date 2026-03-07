@@ -15,13 +15,13 @@ class UnderstandSoulResponse(BaseModel):
     soul: str
 
 
-# Request body for /agent/generate-content.
+# Request body for /agent/generate-content (matches Go GenerateContentRequest).
 class GenerateContentRequest(BaseModel):
     user_id: str
-    user_goal: str
-    user_profile: dict[str, Any] | None = None
+    initial_prompt: str = ""
+    enhanced_profile: str = ""
+    preferences: dict[str, Any] | None = None
     recent_chats: list[Any] | None = None
-    current_content_ids: list[str] | None = None
     limit: int = 20
 
 

@@ -52,7 +52,7 @@ python-service/
 
 - **`main.py`**: Thin entrypoint that imports `app.main.app` so `uvicorn main:app` works.
 - **`Dockerfile`**: Builds a small image running the FastAPI app with Uvicorn.
-- **`requirements.txt`**: Python dependencies (FastAPI, Uvicorn, Redis).
+- **`requirements.txt`**: Python dependencies (FastAPI, Uvicorn, Redis, LiteLLM).
 
 ---
 
@@ -68,6 +68,15 @@ Same Redis instance as Go. Set **`REDIS_URL`** (default `redis://localhost:6379`
   - **`get_search_cached(platform, query)`** / **`set_search_cached(platform, query, results)`**: Search cache `search:{query_hash}` (TTL 1 hour).
 
 If Redis is unavailable, the helpers return empty set/dict or None so the app still runs.
+
+---
+
+## LLM (LiteLLM)
+
+Primary and fallback models are read from env; LiteLLM handles provider routing (e.g. `openai/...`, `groq/...`).
+
+- **`app/config.py`**: `LITELLM_PRIMARY_MODEL`, `LITELLM_FALLBACK_MODEL` (defaults: `openai/gpt-4o-mini`, `groq/llama-3-8b-8192`).
+- **`app/llm/client.py`**: `generate_text(prompt)` calls LiteLLM `completion` with primary model; on failure tries fallback. Set `OPENAI_API_KEY`, `GROQ_API_KEY` (or other provider keys) in env as required by LiteLLM.
 
 ---
 
@@ -93,7 +102,7 @@ Defines all **HTTP endpoints** exposed by this service.
   - Behavior: trims and echoes the initial prompt as the soul (placeholder for LLM).
 
 - **`POST /agent/generate-content`**
-  - Request: `GenerateContentRequest` (`user_id`, `user_goal`, `user_profile`, `recent_chats`, `current_content_ids`, `limit`).
+  - Request: `GenerateContentRequest` (`user_id`, `initial_prompt`, `enhanced_profile`, `preferences`, `recent_chats`, `limit`).
   - Response: `GenerateContentResponse` (`items`: list of `ContentItem`).
   - Behavior: full orchestrator flow (generate queries in ratio → cache-or-scrape concurrent → dedupe with Redis shown → rank placeholder → filter score ≥ 0.6 → mix by ratio → return up to `limit`).
 
@@ -113,7 +122,7 @@ This module is the **main integration surface** for the Go service.
 Pydantic models describing the **agent contract** with the Go service.
 
 - **`UnderstandSoulRequest` / `UnderstandSoulResponse`**: payloads for `/agent/understand-soul`.
-- **`GenerateContentRequest`**: request for `/agent/generate-content` (user_id, user_goal, user_profile, recent_chats, current_content_ids, limit).
+- **`GenerateContentRequest`**: request for `/agent/generate-content` (user_id, initial_prompt, enhanced_profile, preferences, recent_chats, limit).
 - **`Query`**: a single search query (`platform`, `query`); used optionally in `ChatResponse.search_queries`.
 - **`ChatRequest` / `ChatResponse`**: payloads for `/agent/chat`.
 
@@ -131,7 +140,7 @@ These types mirror the Go `agent.Client` contracts.
 Simple, swappable LLM helpers.
 
 - **`client.py`**
-  - **`LLMClient`**: tiny wrapper with `generate_text(prompt, **kwargs)` returning a placeholder string.
+  - **`LLMClient`** / **`generate_text(prompt)`**: LiteLLM completion with primary then fallback model; returns response or empty string.
   - This is where you would wire an actual LLM provider (e.g. LiteLLM, OpenAI, Groq).
 
 - **`prompts.py`**
@@ -149,10 +158,10 @@ These helpers keep prompt-building and LLM calls isolated from the HTTP layer.
 Full content flow: generate queries in ratio → cache-or-scrape (concurrent) → dedupe (Redis) → rank (placeholder) → filter score ≥ 0.6 → mix by ratio → return items.
 
 - **`orchestrator.py`**
-  - **`fetch_content(user_id, user_goal, user_profile, limit=40)`**: main entry; runs the full pipeline and returns ranked `ContentItem`s.
+  - **`fetch_content(user_id, initial_prompt, enhanced_profile, preferences, recent_chats, limit=40)`**: main entry; runs the full pipeline and returns ranked `ContentItem`s.
 
 - **`query_generator.py`**
-  - **`generate_queries_ratio(user_goal)`**: returns queries in ratio (e.g. 4 Pinterest + 3 Instagram photo + 3 Instagram reel + 3 YouTube Shorts + 3 YouTube video).
+  - **`generate_queries_ratio(initial_prompt, enhanced_profile, preferences, recent_chats)`**: returns queries in ratio (placeholder uses initial_prompt + enhanced_profile for query text).
 
 - **`scrape_fetch.py`**
   - **`fetch_one_query(q)`**: for one query, returns cached raw results or scrapes then caches (Redis `search:{query_hash}`).
