@@ -10,8 +10,8 @@ from app.scrapers.models import YtRawItem
 SHORTS_MAX_DURATION_SEC = 60
 
 
+# True if entry is a Short (duration ≤60s or /shorts/ in URL), else False.
 def _is_short(entry: dict[str, Any] | None) -> bool:
-    """Classify entry as short (True) or long video (False); None/empty -> False."""
     if not entry:
         return False
     url = (entry.get("webpage_url") or entry.get("url") or "") or ""
@@ -23,8 +23,8 @@ def _is_short(entry: dict[str, Any] | None) -> bool:
     return False
 
 
+# Converts one yt-dlp entry to pipeline raw dict via YtRawItem.
 def _entry_to_raw(entry: dict[str, Any], content_type: str) -> dict[str, Any]:
-    """Map one yt-dlp entry to YtRawItem then pipeline dict."""
     vid_id = entry.get("id") or ""
     url = entry.get("webpage_url") or entry.get("url") or f"https://www.youtube.com/watch?v={vid_id}"
     title = entry.get("title") or "YouTube"
@@ -38,8 +38,8 @@ def _entry_to_raw(entry: dict[str, Any], content_type: str) -> dict[str, Any]:
     return item.to_dict()
 
 
+# Runs ytsearch for query (sync), returns list of raw entries; no download.
 def _search_youtube_sync(query: str, max_results: int = 20) -> list[dict[str, Any]]:
-    """Sync: run ytsearch, return list of entries (id, title, webpage_url, duration, etc.)."""
     opts = {"quiet": True, "no_warnings": True, "extract_flat": False, "skip_download": True, "default_search": "ytsearch"}
     search_url = f"ytsearch{max_results}:{query}"
     with yt_dlp.YoutubeDL(opts) as ydl:
@@ -50,15 +50,18 @@ def _search_youtube_sync(query: str, max_results: int = 20) -> list[dict[str, An
     return entries
 
 
+# Keeps only entries matching content_type ("short" or "video").
 def _filter_by_content_type(entries: list[dict[str, Any]], content_type: str) -> list[dict[str, Any]]:
-    """Split entries into shorts vs videos; return only the requested content_type."""
     shorts = [e for e in entries if _is_short(e)]
     videos = [e for e in entries if not _is_short(e)]
     return shorts if content_type == "short" else videos
 
 
+# Search YouTube by query, return raw dicts for shorts or videos per content_type (async, runs in thread).
 async def search(query: str, content_type: str = "video") -> list[dict[str, Any]]:
-    """Search YouTube for query; return raw dicts (short or video) matching content_type; runs in thread."""
-    entries = await asyncio.to_thread(_search_youtube_sync, query, 30)
-    filtered = _filter_by_content_type(entries, content_type)
-    return [_entry_to_raw(e, content_type) for e in filtered]
+    try:
+        entries = await asyncio.to_thread(_search_youtube_sync, query, 30)
+        filtered = _filter_by_content_type(entries, content_type)
+        return [_entry_to_raw(e, content_type) for e in filtered]
+    except Exception:
+        return []

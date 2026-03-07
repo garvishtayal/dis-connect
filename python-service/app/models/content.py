@@ -14,6 +14,6 @@ class ContentItem(BaseModel):
     metadata: dict[str, Any] | None = None
 
 
-# Response body for /agent/generate-content.
+# Response body for /agent/generate-content (items relaxed to Any for testing raw_per_query).
 class GenerateContentResponse(BaseModel):
-    items: list[ContentItem]
+    items: list[Any]

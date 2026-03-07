@@ -13,6 +13,7 @@ class YtRawItem(BaseModel):
     title: str
     metadata: dict[str, Any] = {}
 
+    # Serializes to pipeline raw dict (id, type, platform, url, title, metadata).
     def to_dict(self) -> dict[str, Any]:
         return self.model_dump()
 
@@ -26,6 +27,7 @@ class IgRawItem(BaseModel):
     title: str
     metadata: dict[str, Any] = {}
 
+    # Serializes to pipeline raw dict (id, type, platform, url, title, metadata).
     def to_dict(self) -> dict[str, Any]:
         return self.model_dump()
 
@@ -39,5 +41,6 @@ class PinRawItem(BaseModel):
     title: str
     metadata: dict[str, Any] = {}
 
+    # Serializes to pipeline raw dict (id, type, platform, url, title, metadata).
     def to_dict(self) -> dict[str, Any]:
         return self.model_dump()

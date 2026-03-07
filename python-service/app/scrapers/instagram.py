@@ -9,14 +9,14 @@ from app.scrapers.models import IgRawItem
 BASE_URL = "https://www.instagram.com"
 
 
+# Converts search query to a single hashtag string (no spaces, lowercased, max 30 chars).
 def _query_to_hashtag(query: str) -> str:
-    """Turn search query into a single hashtag (no spaces, lowercased)."""
     tag = "".join(query.split()).lower() or "explore"
     return tag[:30]
 
 
+# Builds pipeline raw dict from one IG post (shortcode, is_video, caption) via IgRawItem.
 def _post_to_raw(shortcode: str, is_video: bool, caption: str | None, content_type: str) -> dict[str, Any]:
-    """Map one IG post to IgRawItem then pipeline dict."""
     path = "reel" if is_video else "p"
     url = f"{BASE_URL}/{path}/{shortcode}/"
     title = (caption or "Instagram post")[:500]
@@ -30,8 +30,8 @@ def _post_to_raw(shortcode: str, is_video: bool, caption: str | None, content_ty
     return item.to_dict()
 
 
+# Fetches hashtag posts via instaloader (sync), filters by image/short, returns raw dicts.
 def _search_instagram_sync(hashtag: str, content_type: str, max_count: int = 25) -> list[dict[str, Any]]:
-    """Sync: load posts for hashtag, filter by content_type (image | short), return raw dicts."""
     loader = instaloader.Instaloader()
     try:
         tag = instaloader.Hashtag.from_name(loader.context, hashtag)
@@ -53,7 +53,10 @@ def _search_instagram_sync(hashtag: str, content_type: str, max_count: int = 25)
     return results
 
 
+# Search IG by hashtag from query, return raw dicts for image or short per content_type (async, in thread).
 async def search(query: str, content_type: str = "image") -> list[dict[str, Any]]:
-    """Search Instagram by hashtag derived from query; return raw dicts (image or short) for content_type; runs in thread."""
-    hashtag = _query_to_hashtag(query)
-    return await asyncio.to_thread(_search_instagram_sync, hashtag, content_type)
+    try:
+        hashtag = _query_to_hashtag(query)
+        return await asyncio.to_thread(_search_instagram_sync, hashtag, content_type)
+    except Exception:
+        return []
