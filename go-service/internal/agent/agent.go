@@ -31,6 +31,7 @@ type Query struct {
 type UnderstandSoulRequest struct {
 	UserID        string `json:"user_id"`
 	InitialPrompt string `json:"initial_prompt"`
+	RecentChats   []any  `json:"recent_chats"`
 }
 
 // UnderstandSoulResponse is the /agent/understand-soul response payload.

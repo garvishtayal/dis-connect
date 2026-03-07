@@ -1,5 +1,5 @@
 from app.llm.client import LLMClient
-from app.llm.prompts import build_chat_prompt
+from app.llm.prompts import build_chat_prompt, build_enhance_profile_prompt
 from app.models.chat import (
     ChatRequest,
     ChatResponse,
@@ -13,9 +13,12 @@ from app.orchestrator.orchestrator import fetch_content as orchestrator_fetch_co
 _llm_client = LLMClient()
 
 
-# Handles /agent/understand-soul: derive soul from initial prompt.
+# Handles /agent/understand-soul: LLM derives soul from initial_prompt + recent_chats.
 def understand_soul(req: UnderstandSoulRequest) -> UnderstandSoulResponse:
-    soul = req.initial_prompt.strip()
+    prompt = build_enhance_profile_prompt(req.initial_prompt, req.recent_chats)
+    soul = _llm_client.generate_text(prompt)
+    if not soul:
+        soul = req.initial_prompt.strip()
     return UnderstandSoulResponse(user_id=req.user_id, soul=soul)
 
 

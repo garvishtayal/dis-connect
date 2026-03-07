@@ -11,6 +11,7 @@ endpoints:
     request:
       user_id: string
       initial_prompt: string
+      recent_chats: array
     response:
       user_id: string
       soul: string
@@ -20,10 +21,10 @@ endpoints:
     path: /agent/generate-content
     request:
       user_id: string
-      user_goal: string
-      user_profile: object
+      initial_prompt: string
+      enhanced_profile: string
+      preferences: object
       recent_chats: array
-      current_content_ids: array
       limit: number
     response:
       items:

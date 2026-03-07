@@ -3,10 +3,11 @@ from typing import Any
 from pydantic import BaseModel
 
 
-# Request body for /agent/understand-soul.
+# Request body for /agent/understand-soul (matches Go UnderstandSoulRequest).
 class UnderstandSoulRequest(BaseModel):
     user_id: str
     initial_prompt: str
+    recent_chats: list[Any] | None = None
 
 
 # Response for /agent/understand-soul.

@@ -24,7 +24,7 @@ func LoadAppConfig() *AppConfig {
 	port := getEnv("PORT", "8080")
 	dbURL := getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/dis_connect?sslmode=disable")
 	redisAddr := getEnv("REDIS_ADDR", "localhost:6379")
-	agentBaseURL := getEnv("AGENT_BASE_URL", "http://localhost:3000")
+	agentBaseURL := getEnv("AGENT_BASE_URL", "http://localhost:8000")
 	firebasePath := getEnv("FIREBASE_CREDENTIALS_PATH", "")
 
 	return &AppConfig{
@@ -69,4 +69,3 @@ func getEnv(key, fallback string) string {
 	}
 	return fallback
 }
-

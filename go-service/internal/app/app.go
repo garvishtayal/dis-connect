@@ -12,6 +12,7 @@ import (
 	"github.com/garvishtayal/dis-connect/go-service/internal/api"
 	"github.com/garvishtayal/dis-connect/go-service/internal/api/handlers"
 	"github.com/garvishtayal/dis-connect/go-service/internal/api/middleware"
+	agentclient "github.com/garvishtayal/dis-connect/go-service/internal/agent"
 	"github.com/garvishtayal/dis-connect/go-service/internal/auth"
 	"github.com/garvishtayal/dis-connect/go-service/internal/config"
 	"github.com/garvishtayal/dis-connect/go-service/internal/orchestrator"
@@ -56,8 +57,9 @@ func BuildRouter() (*gin.Engine, error) {
 	router.Use(middleware.CORS())
 
 	// Build service layer dependencies.
+	agentSvc := agentclient.NewClient(cfg.AgentBaseURL)
 	authSvc := service.NewAuthService(tokenValidator, userRepo)
-	userSvc := service.NewUserService(userRepo)
+	userSvc := service.NewUserService(userRepo, agentSvc)
 	chatSvc := service.NewChatService()
 	orchestratorClient := orchestrator.NewClient(cfg.AgentBaseURL)
 	contentSvc := service.NewContentService(orchestratorClient)

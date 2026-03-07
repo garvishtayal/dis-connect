@@ -86,19 +86,20 @@ WHERE firebase_uid = $1;
 	return completed, nil
 }
 
-// SetInitialPromptByFirebaseUID stores initial prompt and marks onboarding complete.
-func (r *UserRepository) SetInitialPromptByFirebaseUID(ctx context.Context, firebaseUID, initialPrompt string) (string, error) {
+// SetInitialPromptByFirebaseUID stores initial prompt and enhanced profile and marks onboarding complete.
+func (r *UserRepository) SetInitialPromptByFirebaseUID(ctx context.Context, firebaseUID, initialPrompt, enhancedProfile string) (string, error) {
 	const query = `
-INSERT INTO users (firebase_uid, initial_prompt, onboarding_completed)
-VALUES ($1, $2, TRUE)
+INSERT INTO users (firebase_uid, initial_prompt, enhanced_profile, onboarding_completed)
+VALUES ($1, $2, $3, TRUE)
 ON CONFLICT (firebase_uid)
 DO UPDATE SET
 	initial_prompt = EXCLUDED.initial_prompt,
+	enhanced_profile = EXCLUDED.enhanced_profile,
 	onboarding_completed = TRUE
 RETURNING id;
 `
 	var id string
-	if err := r.db.DB.QueryRowContext(ctx, query, firebaseUID, initialPrompt).Scan(&id); err != nil {
+	if err := r.db.DB.QueryRowContext(ctx, query, firebaseUID, initialPrompt, enhancedProfile).Scan(&id); err != nil {
 		return "", err
 	}
 	return id, nil
