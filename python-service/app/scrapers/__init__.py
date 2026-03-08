@@ -1,1 +1,1 @@
-# Scrapers: pinterest (pinscrape), instagram (instaloader), youtube (yt-dlp); each returns raw dicts for pipeline.
+# Scrapers: pinterest (pinscrape), instagram (instaloader + session), youtube (Data API v3); each returns raw dicts for pipeline.

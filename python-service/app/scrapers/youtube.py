@@ -1,67 +1,54 @@
-"""YouTube scraper: search via yt-dlp, return shorts and videos as raw dicts for pipeline."""
+"""YouTube scraper: one query → 10 shorts + 5 videos via YouTube Data API v3; 3 API keys fallback."""
 import asyncio
+import os
 from typing import Any
 
-import yt_dlp
+import requests
 
 from app.scrapers.models import YtRawItem
 
-# Shorts: duration <= 60s or "/shorts/" in URL; else video.
-SHORTS_MAX_DURATION_SEC = 60
+SEARCH_URL = "https://www.googleapis.com/youtube/v3/search"
+SHORTS_PER_QUERY = 10
+VIDEOS_PER_QUERY = 5
 
 
-# True if entry is a Short (duration ≤60s or /shorts/ in URL), else False.
-def _is_short(entry: dict[str, Any] | None) -> bool:
-    if not entry:
-        return False
-    url = (entry.get("webpage_url") or entry.get("url") or "") or ""
-    if "/shorts/" in url:
-        return True
-    dur = entry.get("duration")
-    if dur is not None and isinstance(dur, (int, float)):
-        return float(dur) <= SHORTS_MAX_DURATION_SEC
-    return False
+def _get_api_keys() -> list[str]:
+    # Load up to 3 YouTube API keys from env.
+    keys = [os.getenv("YOUTUBE_API_KEY_1"), os.getenv("YOUTUBE_API_KEY_2"), os.getenv("YOUTUBE_API_KEY_3")]
+    return [k for k in keys if k]
 
 
-# Converts one yt-dlp entry to pipeline raw dict via YtRawItem.
-def _entry_to_raw(entry: dict[str, Any], content_type: str) -> dict[str, Any]:
-    vid_id = entry.get("id") or ""
-    url = entry.get("webpage_url") or entry.get("url") or f"https://www.youtube.com/watch?v={vid_id}"
-    title = entry.get("title") or "YouTube"
-    item = YtRawItem(
-        id=f"yt-{content_type}-{vid_id}",
-        type=content_type,
-        url=url,
-        title=title,
-        metadata={"duration": entry.get("duration"), "duration_string": entry.get("duration_string")},
-    )
-    return item.to_dict()
+def _api_search_one(query: str, content_type: str, max_results: int, api_key: str) -> list[dict[str, Any]]:
+    # One API call: shorts (videoDuration=short) or videos (medium).
+    params = {"part": "id,snippet", "q": query, "type": "video", "maxResults": max_results, "key": api_key}
+    params["videoDuration"] = "short" if content_type == "short" else "medium"
+    r = requests.get(SEARCH_URL, params=params, timeout=15)
+    r.raise_for_status()
+    items = (r.json().get("items") or [])
+    out = []
+    for it in items:
+        vid_id = it.get("id", {}).get("videoId")
+        if not vid_id:
+            continue
+        title = (it.get("snippet") or {}).get("title", "YouTube")
+        raw = YtRawItem(id=f"yt-{content_type}-{vid_id}", type=content_type, url=f"https://www.youtube.com/watch?v={vid_id}", title=title, metadata={})
+        out.append(raw.to_dict())
+    return out
 
 
-# Runs ytsearch for query (sync), returns list of raw entries; no download.
-def _search_youtube_sync(query: str, max_results: int = 20) -> list[dict[str, Any]]:
-    opts = {"quiet": True, "no_warnings": True, "extract_flat": False, "skip_download": True, "default_search": "ytsearch"}
-    search_url = f"ytsearch{max_results}:{query}"
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(search_url, download=False)
-    if not info or "entries" not in info:
-        return []
-    entries = [e for e in info["entries"] if e]
-    return entries
+def _search_sync(query: str, api_key: str) -> list[dict[str, Any]]:
+    # Run shorts (10) + videos (5) for one query; combine.
+    shorts = _api_search_one(query, "short", SHORTS_PER_QUERY, api_key)
+    videos = _api_search_one(query, "video", VIDEOS_PER_QUERY, api_key)
+    return shorts + videos
 
 
-# Keeps only entries matching content_type ("short" or "video").
-def _filter_by_content_type(entries: list[dict[str, Any]], content_type: str) -> list[dict[str, Any]]:
-    shorts = [e for e in entries if _is_short(e)]
-    videos = [e for e in entries if not _is_short(e)]
-    return shorts if content_type == "short" else videos
-
-
-# Search YouTube by query, return raw dicts for shorts or videos per content_type (async, runs in thread).
-async def search(query: str, content_type: str = "video") -> list[dict[str, Any]]:
-    try:
-        entries = await asyncio.to_thread(_search_youtube_sync, query, 30)
-        filtered = _filter_by_content_type(entries, content_type)
-        return [_entry_to_raw(e, content_type) for e in filtered]
-    except Exception:
-        return []
+async def search(query: str) -> list[dict[str, Any]]:
+    # One query → 10 shorts + 5 videos; try keys in order until one works.
+    keys = _get_api_keys()
+    for key in keys:
+        try:
+            return await asyncio.to_thread(_search_sync, query, key)
+        except Exception:
+            continue
+    return []

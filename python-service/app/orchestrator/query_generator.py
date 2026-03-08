@@ -19,6 +19,7 @@ def generate_queries_ratio(
     raw = generate_text(full_prompt)
     if not raw:
         raise ValueError("Query generation: LLM returned empty response")
+    print("[query_generation] LLM JSON:", raw)
     return _parse_query_json(raw)
 
 
@@ -36,10 +37,10 @@ def _parse_query_json(raw: str) -> list[Query]:
         if not isinstance(item, dict):
             continue
         platform = item.get("platform") or "pinterest"
-        query = item.get("query") or ""
-        content_type = item.get("content_type") or "image"
-        if query:
-            out.append(Query(platform=platform, query=query, content_type=content_type))
+        q = item.get("query") or ""
+        if not q:
+            continue
+        out.append(Query(platform=platform, query=q))
     if not out:
         raise ValueError("Query generation: no valid queries in LLM response")
     return out
