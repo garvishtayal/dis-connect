@@ -37,7 +37,6 @@ python-service/
 │   │   ├── __init__.py
 │   │   └── client.py
 │   ├── scrapers/
-│   │   ├── instagram.py
 │   │   ├── pinterest.py
 │   │   └── youtube.py
 │   └── main.py
@@ -170,7 +169,7 @@ Full content flow: generate queries in ratio → cache-or-scrape (concurrent) �
   - **`rank_raw_items(raw, user_goal, user_profile)`**: placeholder rank (no LLM); assigns score 0.8 to each item.
 
 - **`mixer.py`**
-  - **`mix_by_ratio(items)`**: mixes by type: 16 image (8 Pinterest + 8 Instagram), 16 short (8 Reels + 8 Shorts), 8 video (YouTube).
+  - **`mix_by_ratio(items)`**: mixes by type: image (Pinterest), short + video (YouTube).
 
 - **`deduplicator.py`**
   - **`deduplicate(items)`**: in-memory URL dedup.
@@ -180,11 +179,10 @@ Full content flow: generate queries in ratio → cache-or-scrape (concurrent) �
 
 ## `app/scrapers/`
 
-Pinterest, Instagram, YouTube only (placeholder mock data). Each returns a list of raw dicts (`id`, `type`, `platform`, `url`, `title`).
+Pinterest and YouTube. Each returns a list of raw dicts (`id`, `type`, `platform`, `url`, `title`).
 
-- **`pinterest.search(query)`** → mock image items.
-- **`instagram.search(query, content_type="image"|"short")`** → mock photo or reel items.
-- **`youtube.search(query, content_type="short"|"video")`** → mock shorts or video items.
+- **`pinterest.search(query)`** → image items.
+- **`youtube.search(query)`** → shorts + videos per query.
 
 ---
 

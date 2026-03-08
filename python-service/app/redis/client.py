@@ -49,7 +49,7 @@ async def get_preferences(user_id: str) -> dict[str, Any]:
 
 
 def _search_hash(platform: str, query: str, content_type: str = "") -> str:
-    """Returns a short hash for cache key search:{hash}; content_type disambiguates YouTube/Instagram."""
+    """Returns a short hash for cache key search:{hash}; content_type disambiguates cache key when needed."""
     raw = f"{platform}:{query}:{content_type}".encode()
     return hashlib.sha256(raw).hexdigest()[:16]
 
@@ -71,7 +71,7 @@ async def get_search_cached(platform: str, query: str, content_type: str = "") -
 
 
 async def set_search_cached(platform: str, query: str, results: list[dict[str, Any]], content_type: str = "") -> None:
-    """Writes raw results to cache with TTL 1 hour; content_type included in key for YouTube/Instagram."""
+    """Writes raw results to cache with TTL 1 hour; content_type included in key when provided."""
     try:
         client = get_client()
         try:

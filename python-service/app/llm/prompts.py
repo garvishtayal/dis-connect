@@ -63,14 +63,13 @@ CONTENT ANGLES THAT WORK (adapt to their world):
 - Lifestyle adjacent to their goal — what successful people in that field actually do and how they live
 - The aesthetic of their future: where they'll work, train, live, and who with
 
-CONTENT MIX — MANDATORY: exactly 10 items. No more, no less.
+CONTENT MIX — MANDATORY: exactly 7 items. No more, no less.
 - 4 items with "platform": "pinterest" (mood, environment, aesthetic images)
-- 3 items with "platform": "instagram" (hashtags only, e.g. #cricketlife)
 - 3 items with "platform": "youtube" (day-in-life, vlogs)
-Total = 4 + 3 + 3 = 10. Stop at 10.
+Total = 4 + 3 = 7. Stop at 7.
 
-OUTPUT: Return ONLY a JSON array of exactly 10 objects. Each has "platform" and "query". No markdown.
-[{"platform": "pinterest", "query": "..."}, ... 4 pinterest, 3 instagram, 3 youtube ...]
+OUTPUT: Return ONLY a JSON array of exactly 7 objects. Each has "platform" and "query". No markdown.
+[{"platform": "pinterest", "query": "..."}, ... 4 pinterest, 3 youtube ...]
 
 Every query should make a man feel the pull of who he's becoming.""",
 
@@ -245,10 +244,10 @@ Think identity and lifestyle — not job title. Focus on:
 - Physical culture: MMA, martial arts, home gym, training with friends
 - Nomad / location-free coding life — the desk by the window, the mountain in the background
 
-Distribution — exactly: 4 Pinterest, 3 Instagram, 3 YouTube (10 total). Each item: "platform" and "query" only.
+Distribution — exactly: 4 Pinterest, 3 YouTube (7 total). Each item: "platform" and "query" only.
 
 Return ONLY a JSON array, no markdown:
-[{{"platform": "pinterest", "query": "coding setup mountain cabin night"}}, {{"platform": "instagram", "query": "#mountainlife"}}, {{"platform": "youtube", "query": "day in life boxer training"}}]"""
+[{{"platform": "pinterest", "query": "coding setup mountain cabin night"}}, {{"platform": "youtube", "query": "day in life boxer training"}}]"""
 
 
 def build_enhance_profile_prompt(

@@ -4,5 +4,4 @@ redis>=5.0.0
 litellm>=1.0.0
 python-dotenv>=1.0.0
 requests>=2.28.0
-instaloader>=4.10
 pinscrape>=5.0.0

@@ -2,7 +2,7 @@ from typing import Any
 
 from app.models.chat import Query
 from app.redis import get_search_cached, set_search_cached
-from app.scrapers import instagram, pinterest, youtube
+from app.scrapers import pinterest, youtube
 
 
 # Fetches raw results for one query: cache hit or scrape then cache.
@@ -12,8 +12,6 @@ async def fetch_one_query(q: Query) -> list[dict[str, Any]]:
         return cached
     if q.platform == "pinterest":
         results = await pinterest.search(q.query)
-    elif q.platform == "instagram":
-        results = await instagram.search(q.query)
     elif q.platform == "youtube":
         results = await youtube.search(q.query)
     else:

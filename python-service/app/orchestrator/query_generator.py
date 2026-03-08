@@ -23,7 +23,7 @@ def generate_queries_ratio(
     return _parse_query_json(raw)
 
 
-# Parses LLM JSON array; enforces limits: 4 pinterest, 3 instagram, 3 youtube (top items only).
+# Parses LLM JSON array; enforces limits: 4 pinterest, 3 youtube (top items only).
 def _parse_query_json(raw: str) -> list[Query]:
     raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
     try:
@@ -32,7 +32,7 @@ def _parse_query_json(raw: str) -> list[Query]:
         raise ValueError(f"Query generation: invalid JSON from LLM: {e}") from e
     if not isinstance(data, list):
         raise ValueError("Query generation: LLM response is not a JSON array")
-    limits = {"pinterest": 4, "instagram": 3, "youtube": 3}
+    limits = {"pinterest": 4, "youtube": 3}
     counts: dict[str, int] = {}
     out: list[Query] = []
     for item in data:
