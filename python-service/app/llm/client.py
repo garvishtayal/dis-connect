@@ -2,10 +2,16 @@ from typing import Any
 
 from litellm import completion
 
-from app.config import LITELLM_FALLBACK_MODEL, LITELLM_PRIMARY_MODEL
+from app.config import LITELLM_MODELS
 
 
-# Calls LiteLLM completion for the given model and messages; returns content string.
+class LLMError(Exception):
+    """Raised when all LLM models (primary + fallbacks) fail."""
+
+    pass
+
+
+# Calls LiteLLM completion for the given model and messages; returns content string or empty.
 def _complete(model: str, messages: list[dict[str, str]]) -> str:
     out = completion(model=model, messages=messages)
     choice = out.choices[0] if out.choices else None
@@ -14,20 +20,20 @@ def _complete(model: str, messages: list[dict[str, str]]) -> str:
     return ""
 
 
-# Tries primary model then fallback; returns LLM response or empty string on failure.
+# Tries models in order (primary then fallbacks); returns first non-empty response. Raises LLMError when all fail.
 def generate_text(prompt: str, **_: Any) -> str:
     messages = [{"role": "user", "content": prompt}]
-    try:
-        out = _complete(LITELLM_PRIMARY_MODEL, messages)
-        print(f"[llm] {LITELLM_PRIMARY_MODEL}")
-        return out
-    except Exception:
+    failures: list[str] = []
+    for model in LITELLM_MODELS:
         try:
-            out = _complete(LITELLM_FALLBACK_MODEL, messages)
-            print(f"[llm] fallback {LITELLM_FALLBACK_MODEL}")
-            return out
-        except Exception:
-            return ""
+            out = _complete(model, messages)
+            if out:
+                print(f"[llm] {model}")
+                return out
+            failures.append(f"{model} returned empty")
+        except Exception as e:
+            failures.append(f"{model}: {e!s}")
+    raise LLMError("; ".join(failures))
 
 
 # Thin wrapper so callers can use LLMClient().generate_text(prompt).
@@ -35,6 +41,6 @@ class LLMClient:
     def __init__(self) -> None:
         pass
 
-    # Generates text via LiteLLM (primary then fallback).
+    # Generates text via LiteLLM (primary then fallbacks).
     def generate_text(self, prompt: str, **kwargs: Any) -> str:
         return generate_text(prompt, **kwargs)

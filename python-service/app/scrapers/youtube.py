@@ -49,7 +49,9 @@ async def search(query: str) -> list[dict[str, Any]]:
     keys = _get_api_keys()
     for key in keys:
         try:
-            return await asyncio.to_thread(_search_sync, query, key)
+            out = await asyncio.to_thread(_search_sync, query, key)
+            print("youtube scrape done")
+            return out
         except Exception:
             continue
-    return []
+    raise RuntimeError("YouTube scrape failed")

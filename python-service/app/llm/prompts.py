@@ -130,7 +130,7 @@ Return ONLY valid JSON. No markdown, no explanation.""",
 
 CRITICAL — Score relative to THEIR specific goal. A 0.95 for a cricketer looks completely different from a 0.95 for a nomad coder. Don't apply a universal aesthetic. Read the profile and judge accordingly.
 
-SCORING (0-1):
+SCORING (0-1): MUST return atleast 30 items with score above 0.5. so be tough considering the minimum 30 items requirement.
 
 0.9-1.0 — This IS their life, just slightly ahead
   - Day-in-life of someone already living exactly what they're building toward
@@ -147,22 +147,14 @@ SCORING (0-1):
   - Skill-building that relates to their goal
   - Tangential but not off-brand
 
-Below 0.5 — Cut it
+Below 0.5 — Not useful
   - Off-topic for their specific goal
   - Victim mindset or negative framing
   - Generic hustle content with no connection to who they're becoming
   - Anything that shrinks the vision
 
-MANIFESTATION NOTE:
-Short hook (💡 + 5-8 words). Make it feel like a door he's about to walk through.
-Tailor the language to THEIR world.
-
-Examples for a cricketer: "💡 That dressing room is waiting for you"
-Examples for a founder: "💡 This is what building it looks like"
-Examples for anyone: "💡 The other side looks like this", "💡 See yourself two years from now"
-
-OUTPUT: Valid JSON array only.
-[{"id": "...", "score": 0.95, "manifestation_note": "💡 That dressing room is yours"}]
+OUTPUT: Valid, complete JSON array only. You MUST return exactly one object per id in the content list — every id exactly once, no omissions. Return the full array; do not truncate.
+[{"id": "...", "score": 0.95}, ...]
 
 No markdown, no explanation."""
 }
@@ -336,11 +328,7 @@ Score based on THEIR specific goal — not a generic lifestyle template.
 Ask: "Does watching this make them feel the pull of who they're becoming, in their world?"
 Prioritise: content that mirrors their exact target life. Penalise: anything off-goal, victim-framed, or shrinks the vision.
 
-Score 0-1 and write a short hook (💡 + 5-8 words) that speaks to THEIR goal specifically.
-
-Return ONLY a JSON array:
-[{{"id": "item_1", "score": 0.95, "manifestation_note": "💡 That dressing room is yours"}}]
-
+Return ONLY a complete JSON array with one {{"id", "score"}} object for every id in CONTENT TO RANK — every id exactly once, no omissions. Do not truncate; return the full array.
 No markdown, no explanation."""
 
 

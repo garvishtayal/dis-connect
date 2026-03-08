@@ -13,7 +13,7 @@ async def fetch_one_query(q: Query) -> list[dict[str, Any]]:
     if q.platform == "pinterest":
         results = await pinterest.search(q.query)
     elif q.platform == "youtube":
-        results = []  # skip for now to avoid API limit
+        results = await youtube.search(q.query)
     else:
         results = []
     await set_search_cached(q.platform, q.query, results, "")

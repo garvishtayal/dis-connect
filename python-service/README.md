@@ -31,7 +31,7 @@ python-service/
 │   │   ├── mixer.py
 │   │   ├── orchestrator.py
 │   │   ├── query_generator.py
-│   │   ├── rank_placeholder.py
+│   │   ├── ranker.py
 │   │   └── scrape_fetch.py
 │   ├── redis/
 │   │   ├── __init__.py
@@ -165,8 +165,8 @@ Full content flow: generate queries in ratio → cache-or-scrape (concurrent) �
 - **`scrape_fetch.py`**
   - **`fetch_one_query(q)`**: for one query, returns cached raw results or scrapes then caches (Redis `search:{query_hash}`).
 
-- **`rank_placeholder.py`**
-  - **`rank_raw_items(raw, user_goal, user_profile)`**: placeholder rank (no LLM); assigns score 0.8 to each item.
+- **`ranker.py`**
+  - **`rank_raw_items(raw, initial_prompt, enhanced_profile, recent_chats)`**: rank items via LLM (build_rank_prompt + scoring 0–1, manifestation_note).
 
 - **`mixer.py`**
   - **`mix_by_ratio(items)`**: mixes by type: image (Pinterest), short + video (YouTube).
