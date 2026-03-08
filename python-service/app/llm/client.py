@@ -18,10 +18,14 @@ def _complete(model: str, messages: list[dict[str, str]]) -> str:
 def generate_text(prompt: str, **_: Any) -> str:
     messages = [{"role": "user", "content": prompt}]
     try:
-        return _complete(LITELLM_PRIMARY_MODEL, messages)
+        out = _complete(LITELLM_PRIMARY_MODEL, messages)
+        print(f"[llm] {LITELLM_PRIMARY_MODEL}")
+        return out
     except Exception:
         try:
-            return _complete(LITELLM_FALLBACK_MODEL, messages)
+            out = _complete(LITELLM_FALLBACK_MODEL, messages)
+            print(f"[llm] fallback {LITELLM_FALLBACK_MODEL}")
+            return out
         except Exception:
             return ""
 

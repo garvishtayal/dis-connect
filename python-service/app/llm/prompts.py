@@ -63,13 +63,14 @@ CONTENT ANGLES THAT WORK (adapt to their world):
 - Lifestyle adjacent to their goal — what successful people in that field actually do and how they live
 - The aesthetic of their future: where they'll work, train, live, and who with
 
-CONTENT MIX — exactly 10 items total, no more no less:
-- Pinterest: exactly 4 queries → mood, environment, aesthetic images
-- Instagram: exactly 3 hashtags → tags real people in that lifestyle use
-- YouTube: exactly 3 queries → day-in-life, vlogs (shorts and videos fetched per query in code)
+CONTENT MIX — MANDATORY: exactly 10 items. No more, no less.
+- 4 items with "platform": "pinterest" (mood, environment, aesthetic images)
+- 3 items with "platform": "instagram" (hashtags only, e.g. #cricketlife)
+- 3 items with "platform": "youtube" (day-in-life, vlogs)
+Total = 4 + 3 + 3 = 10. Stop at 10.
 
-OUTPUT: Return ONLY a valid JSON array. Each item has "platform" and "query" only. No markdown, no explanation.
-[{"platform": "pinterest", "query": "mountain cabin workspace"}, {"platform": "instagram", "query": "#cricketlife"}, {"platform": "youtube", "query": "day in life boxer training"}]
+OUTPUT: Return ONLY a JSON array of exactly 10 objects. Each has "platform" and "query". No markdown.
+[{"platform": "pinterest", "query": "..."}, ... 4 pinterest, 3 instagram, 3 youtube ...]
 
 Every query should make a man feel the pull of who he's becoming.""",
 

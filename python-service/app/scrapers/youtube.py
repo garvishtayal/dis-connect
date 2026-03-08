@@ -31,7 +31,8 @@ def _api_search_one(query: str, content_type: str, max_results: int, api_key: st
         if not vid_id:
             continue
         title = (it.get("snippet") or {}).get("title", "YouTube")
-        raw = YtRawItem(id=f"yt-{content_type}-{vid_id}", type=content_type, url=f"https://www.youtube.com/watch?v={vid_id}", title=title, metadata={})
+        url = f"https://www.youtube.com/shorts/{vid_id}" if content_type == "short" else f"https://www.youtube.com/watch?v={vid_id}"
+        raw = YtRawItem(id=f"yt-{content_type}-{vid_id}", type=content_type, url=url, title=title, metadata={})
         out.append(raw.to_dict())
     return out
 
