@@ -1,3 +1,5 @@
+import json
+import re
 from typing import Any
 
 # -----------------------------------------------------------------------------
@@ -63,7 +65,7 @@ CONTENT ANGLES THAT WORK (adapt to their world):
 - Lifestyle adjacent to their goal — what successful people in that field actually do and how they live
 - The aesthetic of their future: where they'll work, train, live, and who with
 
-CONTENT MIX — MANDATORY: exactly 8 JSON items. No more, no less.
+CONTENT MIX — MANDATORY: exactly 7 JSON items. No more, no less.
 - 4 items with "platform": "pinterest"
   Mood, environment, aesthetic stills — spaces, setups, locations, identity
 - 3 items with "platform": "youtube"
@@ -201,7 +203,27 @@ WHAT THEY JUST SAID:
 
 Reply in 2-3 sentences. Be sharp, occasionally funny, and always pull them toward THEIR specific dream — not a generic one.
 If slacking → call it with humour, tie it to their actual goal. If winning → acknowledge briefly and push further.
-Every response should lean toward growth, mastery, a better life — in their world, on their terms."""
+Every response should lean toward growth, mastery, a better life — in their world, on their terms.
+
+OUTPUT: Return ONLY valid JSON with two keys: "chat_response" (your reply text, 2-3 sentences) and "needs_new_content" (boolean — true if they seem to want fresh inspiration/content or asked for it; false if just chatting).
+Example: {{"chat_response": "Those cover drives don't improve by watching Rohit on YouTube. Nets open tomorrow — be there. 💡", "needs_new_content": true}}
+No markdown, no explanation."""
+
+
+def parse_chat_response(raw: str) -> tuple[str, bool]:
+    """Parse LLM chat JSON into (chat_response, needs_new_content). Fallback to (raw, True) on parse failure."""
+    raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            return (raw, True)
+        msg = data.get("chat_response") or ""
+        need = data.get("needs_new_content", True)
+        if not isinstance(need, bool):
+            need = True
+        return (msg.strip() or raw, need)
+    except (json.JSONDecodeError, TypeError):
+        return (raw.strip() or "Something went wrong.", True)
 
 
 def build_query_generation_prompt(

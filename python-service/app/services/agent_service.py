@@ -1,5 +1,10 @@
 from app.llm.client import LLMClient
-from app.llm.prompts import build_chat_prompt, build_enhance_profile_prompt
+from app.llm.prompts import (
+    SYSTEM_PROMPTS,
+    build_chat_prompt,
+    build_enhance_profile_prompt,
+    parse_chat_response,
+)
 from app.models.chat import (
     ChatRequest,
     ChatResponse,
@@ -16,9 +21,7 @@ _llm_client = LLMClient()
 # Handles /agent/understand-soul: LLM derives soul from initial_prompt + recent_chats.
 def understand_soul(req: UnderstandSoulRequest) -> UnderstandSoulResponse:
     prompt = build_enhance_profile_prompt(req.initial_prompt, req.recent_chats)
-    soul = _llm_client.generate_text(prompt)
-    if not soul:
-        soul = req.initial_prompt.strip()
+    soul = _llm_client.generate_text(prompt) or req.initial_prompt.strip()
     return UnderstandSoulResponse(user_id=req.user_id, soul=soul)
 
 
@@ -35,14 +38,16 @@ async def generate_content(req: GenerateContentRequest) -> list[ContentItem]:
     )
 
 
-# Handles /agent/chat: LLM reply and whether new content is needed.
+# Handles /agent/chat: LLM reply and needs_new_content flag (parsed from structured JSON).
 def chat(req: ChatRequest) -> ChatResponse:
     initial_prompt = req.user_goal or ""
     enhanced_profile = str(req.user_profile) if req.user_profile else ""
-    prompt = build_chat_prompt(req.message, initial_prompt, enhanced_profile, req.chat_history)
-    _ = _llm_client.generate_text(prompt)
+    user_prompt = build_chat_prompt(req.message, initial_prompt, enhanced_profile, req.chat_history)
+    full_prompt = f"{SYSTEM_PROMPTS['chat']}\n\n{user_prompt}"
+    raw = _llm_client.generate_text(full_prompt)
+    chat_response, needs_new_content = parse_chat_response(raw)
     return ChatResponse(
-        chat_response="Got it. I can fetch content aligned with your goal.",
-        needs_new_content=True,
+        chat_response=chat_response,
+        needs_new_content=needs_new_content,
         search_queries=None,
     )

@@ -47,6 +47,8 @@ async def fetch_content(
         above = [c for c in ranked if c.score >= MIN_SCORE]
         mixed = mixer.mix_by_ratio(above, limit=limit)
         final = mixed[:limit]
+        if not final:
+            raise RuntimeError("Content generation produced no items")
     except Exception as e:
         raise RuntimeError(f"Content generation failed at rank/mix: {e}") from e
 

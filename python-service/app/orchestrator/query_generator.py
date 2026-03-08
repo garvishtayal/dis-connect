@@ -19,7 +19,6 @@ def generate_queries_ratio(
     raw = generate_text(full_prompt)
     if not raw:
         raise ValueError("Query generation: LLM returned empty response")
-    print("[query_generation] LLM JSON:", raw)
     return _parse_query_json(raw)
 
 
