@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 
 	"github.com/garvishtayal/dis-connect/go-service/internal/models"
 )
@@ -103,4 +104,43 @@ RETURNING id;
 		return "", err
 	}
 	return id, nil
+}
+
+// ContentProfile holds user fields needed to call the agent generate-content API.
+type ContentProfile struct {
+	InitialPrompt   string
+	EnhancedProfile string
+	Preferences     map[string]any
+}
+
+// GetContentProfileByUserID returns initial_prompt, enhanced_profile, and preferences for a user (by id).
+// Returns nil if the user is not found.
+func (r *UserRepository) GetContentProfileByUserID(ctx context.Context, userID string) (*ContentProfile, error) {
+	const query = `
+SELECT COALESCE(initial_prompt, ''), COALESCE(enhanced_profile, ''), COALESCE(preferences, '{}'::jsonb)
+FROM users
+WHERE id = $1;
+`
+	var initialPrompt, enhancedProfile string
+	var prefsRaw []byte
+	if err := r.db.DB.QueryRowContext(ctx, query, userID).Scan(&initialPrompt, &enhancedProfile, &prefsRaw); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var preferences map[string]any
+	if len(prefsRaw) > 0 {
+		if err := json.Unmarshal(prefsRaw, &preferences); err != nil {
+			preferences = nil
+		}
+	}
+	if preferences == nil {
+		preferences = make(map[string]any)
+	}
+	return &ContentProfile{
+		InitialPrompt:   initialPrompt,
+		EnhancedProfile: enhancedProfile,
+		Preferences:     preferences,
+	}, nil
 }

@@ -29,7 +29,7 @@ func (h *ContentHandler) GetContent(c *gin.Context) {
 
 	items, err := h.contentService.GetContent(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch content"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch content", "detail": err.Error()})
 		return
 	}
 

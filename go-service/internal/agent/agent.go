@@ -80,12 +80,15 @@ type Client struct {
 
 // Functions: constructors, endpoint methods, and helpers.
 
-// NewClient builds an agent client with a default timeout.
+// Default timeout for agent HTTP calls. Generate-content (scrape + rank) can take a minute or more.
+const defaultAgentTimeout = 90 * time.Second
+
+// NewClient builds an agent client with a timeout suitable for long-running generate-content.
 func NewClient(baseURL string) *Client {
 	return &Client{
 		baseURL: strings.TrimRight(baseURL, "/"),
 		http: &http.Client{
-			Timeout: 15 * time.Second,
+			Timeout: defaultAgentTimeout,
 		},
 	}
 }
