@@ -54,10 +54,12 @@ async def fetch_content(
     return raw_per_query
 
 
-# Runs fetch_one_query for each query concurrently.
+# Runs fetch_one_query for each query sequentially (avoids Pinterest rate/connection issues).
 async def _fetch_all_queries_concurrent(queries: list[Query]) -> list[list[dict[str, Any]]]:
-    tasks = [scrape_fetch.fetch_one_query(q) for q in queries]
-    return list(await asyncio.gather(*tasks))
+    out: list[list[dict[str, Any]]] = []
+    for q in queries:
+        out.append(await scrape_fetch.fetch_one_query(q))
+    return out
 
 
 # Flattens list of raw result lists into one list.

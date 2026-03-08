@@ -63,9 +63,13 @@ CONTENT ANGLES THAT WORK (adapt to their world):
 - Lifestyle adjacent to their goal — what successful people in that field actually do and how they live
 - The aesthetic of their future: where they'll work, train, live, and who with
 
-CONTENT MIX — MANDATORY: exactly 7 items. No more, no less.
-- 4 items with "platform": "pinterest" (mood, environment, aesthetic images)
-- 3 items with "platform": "youtube" (day-in-life, vlogs)
+CONTENT MIX — MANDATORY: exactly 8 JSON items. No more, no less.
+- 4 items with "platform": "pinterest"
+  Mood, environment, aesthetic stills — spaces, setups, locations, identity
+- 3 items with "platform": "youtube"
+  YouTube Shorts that feel like Instagram Reels — day-in-life, real moments, identity vibes
+  Append #shorts or "pov" or "day in my life" to queries to surface repurposed Reels
+  Example queries: "nomad coder bali day in my life #shorts", "mma morning routine pov #shorts"
 Total = 4 + 3 = 7. Stop at 7.
 
 OUTPUT: Return ONLY a JSON array of exactly 7 objects. Each has "platform" and "query". No markdown.
