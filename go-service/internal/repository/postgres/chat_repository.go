@@ -26,6 +26,20 @@ VALUES ($1, $2, $3);
 	return err
 }
 
+// CountMessages returns the total number of messages for a user.
+func (r *ChatRepository) CountMessages(ctx context.Context, userID string) (int, error) {
+	const query = `
+SELECT COUNT(*)
+FROM chat_messages
+WHERE user_id = $1;
+`
+	var n int
+	if err := r.db.DB.QueryRowContext(ctx, query, userID).Scan(&n); err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
 // ListMessages returns recent chat messages for a user.
 func (r *ChatRepository) ListMessages(ctx context.Context, userID string, limit int) ([]models.ChatMessage, error) {
 	const query = `

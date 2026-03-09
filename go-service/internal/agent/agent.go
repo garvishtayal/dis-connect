@@ -17,6 +17,7 @@ const (
 	pathUnderstandSoul  = "/agent/understand-soul"
 	pathGenerateContent = "/agent/generate-content"
 	pathChat            = "/agent/chat"
+	pathPreferences     = "/agent/prefrences"
 )
 
 // Types: shared contract models and client state.
@@ -71,6 +72,18 @@ type ChatResponse struct {
 	NeedsNewContent bool   `json:"needs_new_content"`
 }
 
+// PreferencesRequest is the /agent/prefrences request payload.
+type PreferencesRequest struct {
+	UserID      string         `json:"user_id"`
+	Preferences map[string]any `json:"preferences,omitempty"`
+	RecentChats []any          `json:"recent_chats,omitempty"`
+}
+
+// PreferencesResponse is the /agent/prefrences response payload.
+type PreferencesResponse struct {
+	Preferences map[string]any `json:"preferences"`
+}
+
 // Client wraps Python agent API calls.
 type Client struct {
 	baseURL string
@@ -114,6 +127,15 @@ func (c *Client) GenerateContent(ctx context.Context, req GenerateContentRequest
 func (c *Client) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
 	var resp ChatResponse
 	if err := c.postJSON(ctx, pathChat, req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// Preferences calls /agent/prefrences.
+func (c *Client) Preferences(ctx context.Context, req PreferencesRequest) (*PreferencesResponse, error) {
+	var resp PreferencesResponse
+	if err := c.postJSON(ctx, pathPreferences, req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

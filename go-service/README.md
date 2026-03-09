@@ -44,16 +44,13 @@ go-service/
 │   │   ├── content.go
 │   │   ├── search.go
 │   │   └── user.go
-│   ├── orchestrator/
-│   │   ├── client.go
-│   │   ├── content_request.go
-│   │   └── content_response.go
 │   ├── repository/
 │   │   ├── postgres/
 │   │   │   ├── client.go
 │   │   │   ├── chat_repository.go
 │   │   │   ├── content_repository.go
 │   │   │   ├── user_repository.go
+│   │   │   ├── preference_repository.go
 │   │   │   └── migrations/
 │   │   └── redis/
 │   │       ├── client.go
@@ -101,7 +98,7 @@ Helpers: **`NewPostgresDB(cfg)`** and **`NewRedisClient(cfg)`** create DB and Re
 
 ## `internal/app/app.go`
 
-- **`BuildRouter()`**: Loads `.env`, validates Firebase credentials, creates Firebase client and token validator, Postgres client, repositories, **agent client** and **orchestrator client** (both using `AGENT_BASE_URL`), and all services and handlers. Attaches global middleware (logger, CORS), then registers all API routes. Returns the Gin engine or an error.
+- **`BuildRouter()`**: Loads `.env`, validates Firebase credentials, creates Firebase client and token validator, Postgres client, repositories, and the **agent client** (using `AGENT_BASE_URL`), then wires all services and handlers. Attaches global middleware (logger, CORS), then registers all API routes. Returns the Gin engine or an error.
 - **`ResolvePort()`**: Returns the port string for the server (used by `main`).
 
 Use this file to add more middleware, new services, or change wiring.
@@ -133,7 +130,6 @@ All routes are registered here. Protected routes require a valid **Firebase ID t
 - **`user.go`**: `CreateUser` — requires Firebase UID from context, binds `CreateUserRequest` (e.g. `initial_prompt`), calls `UserService.CreateUser` (which calls Python **understand-soul** and persists user).
 - **`chat.go`**: `HandleChat` — binds `ChatRequest`, calls `ChatService.HandleChat` (currently placeholder).
 - **`content.go`**: `GetContent` — binds query to `ContentRequest` (`user_id`, `limit`, `offset`), calls `ContentService.GetContent` (agent generate-content + user profile from Postgres).
-- **`preferences.go`**: `UpdatePreferences` — `user_id` from query, body as JSON; calls `PreferenceService.UpdatePreferences` (placeholder).
 
 ---
 
@@ -158,20 +154,14 @@ Used by **AuthService** (sign-in) and **FirebaseAuth** middleware (protected rou
 
 ## Agent client (`internal/agent/agent.go`)
 
-HTTP client for the **Python agent service** (base URL from `AGENT_BASE_URL`). Used by **UserService** for onboarding.
+HTTP client for the **Python agent service** (base URL from `AGENT_BASE_URL`). Used by **UserService**, **ContentService**, and **ChatService`.
 
-- **`NewClient(baseURL)`**: Builds client with 15s timeout.
+- **`NewClient(baseURL)`**: Builds client with a timeout suitable for generate-content/chat.
 - **`UnderstandSoul(ctx, req)`** → **`UnderstandSoulResponse`**: `POST /agent/understand-soul` — request: `user_id`, `initial_prompt`, `recent_chats`; response: `user_id`, `soul`.
 - **`GenerateContent(ctx, req)`** → **`GenerateContentResponse`**: `POST /agent/generate-content` — full request (user_id, initial_prompt, enhanced_profile, preferences, recent_chats, limit); response: `items` (content list).
-- **`Chat(ctx, req)`** → **`ChatResponse`**: `POST /agent/chat` — request: user_id, message, user_goal, user_profile, chat_history, current_content_ids; response: `chat_response`, `needs_new_content`, optional `search_queries`.
+-- **`Chat(ctx, req)`** → **`ChatResponse`**: `POST /agent/chat` — request: user_id, message, initial_prompt, enhanced_profile, preferences, recent_chats; response: `chat_response`, `needs_new_content`.
 
 Request/response types are defined in this package and mirror the Python agent contract.
-
----
-
-## Orchestrator package (`internal/orchestrator/`)
-
-Legacy HTTP client for a separate orchestrator endpoint (`/orchestrator/fetch-content`). **Content** is now served via **agent.Client.GenerateContent** (Python **`/agent/generate-content`**). The orchestrator package is unused and can be removed or repurposed.
 
 ---
 
@@ -182,7 +172,7 @@ Legacy HTTP client for a separate orchestrator endpoint (`/orchestrator/fetch-co
 - **`chat.go`**: **`ChatMessage`**, **`ChatRequest`** (user_id, message), **`ChatResponse`** (chat_response, needs_new_content, new_content).
 - **`auth.go`**: **`AuthRequest`**, **`AuthResponse`**, auth provider constants.
 
-These types are used by handlers, services, and agent/orchestrator contracts.
+These types are used by handlers, services, and agent contracts.
 
 ---
 
@@ -192,7 +182,6 @@ These types are used by handlers, services, and agent/orchestrator contracts.
 - **`user_service.go`**: **UserService** — **CreateUser**: optionally calls **agent.UnderstandSoul** to get soul from initial prompt, then persists user via **UserRepository** (SetInitialPromptByFirebaseUID). Returns **CreateUserResponse** (user_id, soul, onboarding_completed).
 - **`content_service.go`**: **ContentService** — **GetContent**: loads user profile (initial_prompt, enhanced_profile, preferences) via **UserRepository.GetContentProfileByUserID**, builds **agent.GenerateContentRequest**, calls **agent.Client.GenerateContent** (Python `/agent/generate-content`), returns items; applies offset client-side.
 - **`chat_service.go`**: **ChatService** — **HandleChat**: placeholder; returns a fixed message and `needs_new_content: false`. Can be wired to **agent.Client.Chat**.
-- **`preference_service.go`**: **PreferenceService** — **UpdatePreferences**: placeholder; can be wired to Redis or Postgres preference storage.
 
 ---
 
@@ -204,6 +193,7 @@ These types are used by handlers, services, and agent/orchestrator contracts.
 - **`user_repository.go`**: User CRUD; **SetInitialPromptByFirebaseUID** (create or update user with initial prompt and enhanced profile); **IsOnboardingCompletedByFirebaseUID** for onboarding middleware; **GetContentProfileByUserID** (initial_prompt, enhanced_profile, preferences) for the content service to call the agent generate-content API.
 - **`chat_repository.go`**: Chat message history (if used).
 - **`content_repository.go`**: Content cache / shown content (if used).
+- **`preference_repository.go`**: Update user `preferences` JSONB in the `users` table.
 - **`migrations/`**: **000001_init_schema** (users, chat_messages, shown_content, content_cache, indexes); **000002** adds **onboarding_completed** to users and makes **initial_prompt** nullable.
 
 Same database can be used for users, chat, and content metadata; Redis is available for cache and dedup (see below).
@@ -260,6 +250,6 @@ Same database can be used for users, chat, and content metadata; Redis is availa
 ## Summary
 
 - **Go service** = main API (Gin): auth (Google/Apple via Firebase), user onboarding (with Python understand-soul), content feed (via agent generate-content + user profile from Postgres), chat and preferences (placeholders).
-- **Python service** = agent/content engine: understand-soul, generate-content, chat; Go calls it via **agent** and **orchestrator** clients.
+- **Python service** = agent/content engine: understand-soul, generate-content, chat; Go calls it via the **agent client**.
 - **Postgres** = users, onboarding state, and (optionally) chat/content tables.
 - **Redis** = configured; repos for dedup, preferences, and cache exist and can be wired in **app.go** when needed.

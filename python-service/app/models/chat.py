@@ -47,7 +47,18 @@ class ChatRequest(BaseModel):
 
 
 # Response for /agent/chat.
-# Matches Go ChatResponse: only chat_response and needs_new_content.
 class ChatResponse(BaseModel):
     chat_response: str
     needs_new_content: bool
+
+
+# Request body for /preferences – updates content preferences via LLM.
+class PreferencesRequest(BaseModel):
+    user_id: str
+    preferences: dict[str, Any] | None = None
+    recent_chats: list[Any] | None = None
+
+
+# Response body for /preferences – returns updated preferences object.
+class PreferencesResponse(BaseModel):
+    preferences: dict[str, Any]

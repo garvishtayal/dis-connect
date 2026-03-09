@@ -11,17 +11,23 @@ import (
 
 // ChatService handles chat flows via the Python agent and content service.
 type ChatService struct {
-	agent          *agent.Client
-	contentService *ContentService
-	userRepo       *postgres.UserRepository
+	agent              *agent.Client
+	contentService     *ContentService
+	userRepo           *postgres.UserRepository
+	chatRepo           *postgres.ChatRepository
+	preferenceRepo     *postgres.PreferenceRepository
+	preferencesEnabled bool
 }
 
 // NewChatService creates a new ChatService.
-func NewChatService(agentClient *agent.Client, contentService *ContentService, userRepo *postgres.UserRepository) *ChatService {
+func NewChatService(agentClient *agent.Client, contentService *ContentService, userRepo *postgres.UserRepository, chatRepo *postgres.ChatRepository, preferenceRepo *postgres.PreferenceRepository) *ChatService {
 	return &ChatService{
-		agent:          agentClient,
-		contentService: contentService,
-		userRepo:       userRepo,
+		agent:              agentClient,
+		contentService:     contentService,
+		userRepo:           userRepo,
+		chatRepo:           chatRepo,
+		preferenceRepo:     preferenceRepo,
+		preferencesEnabled: chatRepo != nil && preferenceRepo != nil,
 	}
 }
 
@@ -44,13 +50,27 @@ func (s *ChatService) HandleChat(ctx context.Context, req models.ChatRequest) (*
 		return nil, fmt.Errorf("user not found")
 	}
 
+	// Optional: load last few chats so chat has context.
+	var recentChats []any
+	if s.chatRepo != nil {
+		msgs, err := s.chatRepo.ListMessages(ctx, req.UserID, 5)
+		if err == nil {
+			for _, m := range msgs {
+				recentChats = append(recentChats, map[string]any{
+					"role":    m.Role,
+					"content": m.Content,
+				})
+			}
+		}
+	}
+
 	agentReq := agent.ChatRequest{
 		UserID:          req.UserID,
 		Message:         req.Message,
 		InitialPrompt:   profile.InitialPrompt,
 		EnhancedProfile: profile.EnhancedProfile,
 		Preferences:     profile.Preferences,
-		RecentChats:     nil,
+		RecentChats:     recentChats,
 	}
 
 	agentResp, err := s.agent.Chat(ctx, agentReq)
@@ -61,6 +81,19 @@ func (s *ChatService) HandleChat(ctx context.Context, req models.ChatRequest) (*
 	result := &models.ChatResponse{
 		ChatResponse:    agentResp.ChatResponse,
 		NeedsNewContent: agentResp.NeedsNewContent,
+	}
+
+	// Store the user and agent messages for history/counting. Ignore errors to keep chat responsive.
+	if s.chatRepo != nil {
+		_ = s.chatRepo.SaveMessage(ctx, req.UserID, "user", req.Message)
+		_ = s.chatRepo.SaveMessage(ctx, req.UserID, "agent", agentResp.ChatResponse)
+	}
+
+	// After every 5th user chat, trigger a background preferences update.
+	if s.preferencesEnabled && s.chatRepo != nil {
+		if count, err := s.chatRepo.CountMessages(ctx, req.UserID); err == nil && count > 0 && count%5 == 0 {
+			go s.updatePreferencesInBackground(req.UserID, profile.Preferences)
+		}
 	}
 
 	if !agentResp.NeedsNewContent || s.contentService == nil {
@@ -80,4 +113,41 @@ func (s *ChatService) HandleChat(ctx context.Context, req models.ChatRequest) (*
 
 	result.NewContent = items
 	return result, nil
+}
+
+// updatePreferencesInBackground calls the Python preferences endpoint and persists
+// any updated preferences without blocking the main chat request.
+func (s *ChatService) updatePreferencesInBackground(userID string, currentPrefs map[string]any) {
+	if s.agent == nil || s.chatRepo == nil || s.preferenceRepo == nil {
+		return
+	}
+
+	ctx := context.Background()
+
+	// Reload the last few chats (including the most recent ones) for context.
+	msgs, err := s.chatRepo.ListMessages(ctx, userID, 5)
+	if err != nil {
+		return
+	}
+
+	var recentChats []any
+	for _, m := range msgs {
+		recentChats = append(recentChats, map[string]any{
+			"role":    m.Role,
+			"content": m.Content,
+		})
+	}
+
+	prefReq := agent.PreferencesRequest{
+		UserID:      userID,
+		Preferences: currentPrefs,
+		RecentChats: recentChats,
+	}
+
+	prefResp, err := s.agent.Preferences(ctx, prefReq)
+	if err != nil || prefResp == nil || prefResp.Preferences == nil {
+		return
+	}
+
+	_ = s.preferenceRepo.UpdatePreferences(ctx, userID, prefResp.Preferences)
 }

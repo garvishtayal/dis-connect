@@ -13,7 +13,6 @@ type Router struct {
 	user         *handlers.UserHandler
 	chat         *handlers.ChatHandler
 	content      *handlers.ContentHandler
-	preferences  *handlers.PreferencesHandler
 	health       *handlers.HealthHandler
 	firebaseAuth gin.HandlerFunc
 	onboarding   gin.HandlerFunc
@@ -25,7 +24,6 @@ func NewRouter(
 	user *handlers.UserHandler,
 	chat *handlers.ChatHandler,
 	content *handlers.ContentHandler,
-	preferences *handlers.PreferencesHandler,
 	health *handlers.HealthHandler,
 	firebaseAuth gin.HandlerFunc,
 	onboarding gin.HandlerFunc,
@@ -35,7 +33,6 @@ func NewRouter(
 		user:         user,
 		chat:         chat,
 		content:      content,
-		preferences:  preferences,
 		health:       health,
 		firebaseAuth: firebaseAuth,
 		onboarding:   onboarding,
@@ -69,9 +66,4 @@ func (r *Router) RegisterRoutes(engine *gin.Engine) {
 
 	onboardedGroup := protectedGroup.Group("")
 	onboardedGroup.Use(r.onboarding)
-
-	prefGroup := onboardedGroup.Group("/preferences")
-	{
-		prefGroup.POST("", r.preferences.UpdatePreferences)
-	}
 }

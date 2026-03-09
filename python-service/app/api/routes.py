@@ -4,6 +4,8 @@ from app.models.chat import (
     ChatRequest,
     ChatResponse,
     GenerateContentRequest,
+    PreferencesRequest,
+    PreferencesResponse,
     UnderstandSoulRequest,
     UnderstandSoulResponse,
 )
@@ -36,3 +38,9 @@ async def generate_content(req: GenerateContentRequest) -> GenerateContentRespon
 @router.post("/agent/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest) -> ChatResponse:
     return agent_service.chat(req)
+
+
+# Update content preferences via LLM.
+@router.post("/agent/prefrences", response_model=PreferencesResponse)
+def preferences(req: PreferencesRequest) -> PreferencesResponse:
+    return agent_service.preferences(req)

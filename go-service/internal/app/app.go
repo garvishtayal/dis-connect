@@ -49,6 +49,8 @@ func BuildRouter() (*gin.Engine, error) {
 		return nil, err
 	}
 	userRepo := postgres.NewUserRepository(pgClient)
+	chatRepo := postgres.NewChatRepository(pgClient)
+	preferenceRepo := postgres.NewPreferenceRepository(pgClient)
 	redisClient := redisrepo.NewClient(cfg)
 	dedupRepo := redisrepo.NewDedupRepository(redisClient)
 
@@ -63,8 +65,7 @@ func BuildRouter() (*gin.Engine, error) {
 	authSvc := service.NewAuthService(tokenValidator, userRepo)
 	userSvc := service.NewUserService(userRepo, agentSvc)
 	contentSvc := service.NewContentService(agentSvc, userRepo, dedupRepo)
-	chatSvc := service.NewChatService(agentSvc, contentSvc, userRepo)
-	preferenceSvc := service.NewPreferenceService()
+	chatSvc := service.NewChatService(agentSvc, contentSvc, userRepo, chatRepo, preferenceRepo)
 	firebaseAuth := middleware.FirebaseAuth(tokenValidator)
 	onboardingRequired := middleware.OnboardingRequired(userRepo)
 
@@ -73,7 +74,6 @@ func BuildRouter() (*gin.Engine, error) {
 	userHandler := handlers.NewUserHandler(userSvc)
 	chatHandler := handlers.NewChatHandler(chatSvc)
 	contentHandler := handlers.NewContentHandler(contentSvc)
-	preferencesHandler := handlers.NewPreferencesHandler(preferenceSvc)
 	healthHandler := handlers.NewHealthHandler()
 
 	// Register all API routes.
@@ -82,7 +82,6 @@ func BuildRouter() (*gin.Engine, error) {
 		userHandler,
 		chatHandler,
 		contentHandler,
-		preferencesHandler,
 		healthHandler,
 		firebaseAuth,
 		onboardingRequired,
