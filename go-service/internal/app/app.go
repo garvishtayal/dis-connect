@@ -63,7 +63,7 @@ func BuildRouter() (*gin.Engine, error) {
 	authSvc := service.NewAuthService(tokenValidator, userRepo)
 	userSvc := service.NewUserService(userRepo, agentSvc)
 	contentSvc := service.NewContentService(agentSvc, userRepo, dedupRepo)
-	chatSvc := service.NewChatService(agentSvc, contentSvc)
+	chatSvc := service.NewChatService(agentSvc, contentSvc, userRepo)
 	preferenceSvc := service.NewPreferenceService()
 	firebaseAuth := middleware.FirebaseAuth(tokenValidator)
 	onboardingRequired := middleware.OnboardingRequired(userRepo)

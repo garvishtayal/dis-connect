@@ -42,10 +42,10 @@ endpoints:
     request:
       user_id: string
       message: string
-      user_goal: string
-      user_profile: object
-      chat_history: array
-      current_content_ids: array
+      initial_prompt: string
+      enhanced_profile: string
+      preferences: object
+      recent_chats: array
     response:
       chat_response: string
       needs_new_content: boolean

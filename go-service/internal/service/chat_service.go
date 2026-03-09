@@ -6,19 +6,22 @@ import (
 
 	"github.com/garvishtayal/dis-connect/go-service/internal/agent"
 	"github.com/garvishtayal/dis-connect/go-service/internal/models"
+	"github.com/garvishtayal/dis-connect/go-service/internal/repository/postgres"
 )
 
 // ChatService handles chat flows via the Python agent and content service.
 type ChatService struct {
-	agent         *agent.Client
+	agent          *agent.Client
 	contentService *ContentService
+	userRepo       *postgres.UserRepository
 }
 
 // NewChatService creates a new ChatService.
-func NewChatService(agentClient *agent.Client, contentService *ContentService) *ChatService {
+func NewChatService(agentClient *agent.Client, contentService *ContentService, userRepo *postgres.UserRepository) *ChatService {
 	return &ChatService{
-		agent:         agentClient,
+		agent:          agentClient,
 		contentService: contentService,
+		userRepo:       userRepo,
 	}
 }
 
@@ -28,13 +31,26 @@ func (s *ChatService) HandleChat(ctx context.Context, req models.ChatRequest) (*
 		return nil, fmt.Errorf("agent client is not configured")
 	}
 
+	if s.userRepo == nil {
+		return nil, fmt.Errorf("user repository is not configured")
+	}
+
+	// Load user profile once so chat has the same context as content.
+	profile, err := s.userRepo.GetContentProfileByUserID(ctx, req.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("get user profile: %w", err)
+	}
+	if profile == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
 	agentReq := agent.ChatRequest{
-		UserID:            req.UserID,
-		Message:           req.Message,
-		UserGoal:          "",
-		UserProfile:       nil,
-		ChatHistory:       nil,
-		CurrentContentIDs: nil,
+		UserID:          req.UserID,
+		Message:         req.Message,
+		InitialPrompt:   profile.InitialPrompt,
+		EnhancedProfile: profile.EnhancedProfile,
+		Preferences:     profile.Preferences,
+		RecentChats:     nil,
 	}
 
 	agentResp, err := s.agent.Chat(ctx, agentReq)

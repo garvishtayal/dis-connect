@@ -57,12 +57,12 @@ type GenerateContentResponse struct {
 
 // ChatRequest is the /agent/chat request payload.
 type ChatRequest struct {
-	UserID            string         `json:"user_id"`
-	Message           string         `json:"message"`
-	UserGoal          string         `json:"user_goal"`
-	UserProfile       map[string]any `json:"user_profile"`
-	ChatHistory       []any          `json:"chat_history"`
-	CurrentContentIDs []string       `json:"current_content_ids"`
+	UserID          string         `json:"user_id"`
+	Message         string         `json:"message"`
+	InitialPrompt   string         `json:"initial_prompt"`
+	EnhancedProfile string         `json:"enhanced_profile"`
+	Preferences     map[string]any `json:"preferences"`
+	RecentChats     []any          `json:"recent_chats"`
 }
 
 // ChatResponse is the /agent/chat response payload.

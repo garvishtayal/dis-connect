@@ -40,9 +40,9 @@ async def generate_content(req: GenerateContentRequest) -> list[ContentItem]:
 
 # Handles /agent/chat: LLM reply and needs_new_content flag (parsed from structured JSON).
 def chat(req: ChatRequest) -> ChatResponse:
-    initial_prompt = req.user_goal or ""
-    enhanced_profile = str(req.user_profile) if req.user_profile else ""
-    user_prompt = build_chat_prompt(req.message, initial_prompt, enhanced_profile, req.chat_history)
+    initial_prompt = req.initial_prompt or ""
+    enhanced_profile = req.enhanced_profile or ""
+    user_prompt = build_chat_prompt(req.message, initial_prompt, enhanced_profile, req.recent_chats)
     full_prompt = f"{SYSTEM_PROMPTS['chat']}\n\n{user_prompt}"
     raw = _llm_client.generate_text(full_prompt)
     chat_response, needs_new_content = parse_chat_response(raw)

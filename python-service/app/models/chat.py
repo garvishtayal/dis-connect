@@ -36,14 +36,14 @@ class Query(BaseModel):
     content_type: str = "image"  # "image" | "short" | "video"
 
 
-# Request body for /agent/chat.
+# Request body for /agent/chat (aligned with GenerateContentRequest-style context).
 class ChatRequest(BaseModel):
     user_id: str
     message: str
-    user_goal: str
-    user_profile: dict[str, Any] | None = None
-    chat_history: list[Any] | None = None
-    current_content_ids: list[str] | None = None
+    initial_prompt: str = ""
+    enhanced_profile: str = ""
+    preferences: dict[str, Any] | None = None
+    recent_chats: list[Any] | None = None
 
 
 # Response for /agent/chat.

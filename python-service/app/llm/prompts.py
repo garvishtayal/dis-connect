@@ -205,9 +205,27 @@ Reply in 2-3 sentences. Be sharp, occasionally funny, and always pull them towar
 If slacking → call it with humour, tie it to their actual goal. If winning → acknowledge briefly and push further.
 Every response should lean toward growth, mastery, a better life — in their world, on their terms.
 
-OUTPUT: Return ONLY valid JSON with two keys: "chat_response" (your reply text, 2-3 sentences) and "needs_new_content" (boolean — true if they seem to want fresh inspiration/content or asked for it; false if just chatting).
-Example: {{"chat_response": "Those cover drives don't improve by watching Rohit on YouTube. Nets open tomorrow — be there. 💡", "needs_new_content": true}}
-No markdown, no explanation."""
+OUTPUT (STRICT):
+- Return ONLY valid JSON with two keys:
+  - "chat_response": your reply text (2-3 sentences)
+  - "needs_new_content": boolean
+- DEFAULT to false. Only set true when the user DIRECTLY requests new content.
+
+SET needs_new_content: true ONLY IF the message contains a clear, direct ask such as:
+  - "give me new/fresh content", "show me videos/images", "I want inspiration/ideas"
+  - "I'm bored, show me something new", "find me content", "I want something new to watch/see"
+
+SET needs_new_content: false for EVERYTHING ELSE, including:
+  - General chatting, check-ins, motivation talk
+  - Vague mentions of wanting to improve or feel inspired
+  - Talking ABOUT content without asking FOR it
+
+EXAMPLES:
+- Chatting: {{"chat_response": "Good. You showed up today — that already puts you ahead of most. What's the next block?", "needs_new_content": false}}
+- "I want to be inspired like Kobe": {{"chat_response": "That hunger is the right starting point. Let's talk about what that looks like in your actual routine today.", "needs_new_content": false}}
+- "Give me fresh content / new videos and images": {{"chat_response": "Let's line up content that mirrors the life you're building.", "needs_new_content": true}}
+
+Return exactly ONE JSON object. No markdown, no explanation."""
 
 
 def parse_chat_response(raw: str) -> tuple[str, bool]:

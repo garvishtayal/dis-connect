@@ -55,8 +55,9 @@ func (r *Router) RegisterRoutes(engine *gin.Engine) {
 		authGroup.POST("/apple", r.auth.SignInWithApple)
 	}
 
-	// Content: no auth/onboarding for testing linking to Python service.
+	// Public test endpoints for content and chat (no auth/onboarding).
 	apiGroup.GET("/content", r.content.GetContent)
+	apiGroup.POST("/chat", r.chat.HandleChat)
 
 	protectedGroup := apiGroup.Group("")
 	protectedGroup.Use(r.firebaseAuth)
@@ -68,11 +69,6 @@ func (r *Router) RegisterRoutes(engine *gin.Engine) {
 
 	onboardedGroup := protectedGroup.Group("")
 	onboardedGroup.Use(r.onboarding)
-
-	chatGroup := onboardedGroup.Group("/chat")
-	{
-		chatGroup.POST("", r.chat.HandleChat)
-	}
 
 	prefGroup := onboardedGroup.Group("/preferences")
 	{
