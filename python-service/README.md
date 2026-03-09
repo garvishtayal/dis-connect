@@ -1,11 +1,12 @@
 # dis-connect Python Service
 
 This service is the **agent / content engine** used by the Go API.  
-It exposes **3 agent endpoints** that the Go service calls:
+It exposes **4 agent endpoints** that the Go service calls:
 
 - **Understand soul**: derive soul from the user's initial prompt
 - **Generate content**: return content items (query + scrape + mix + rank internally)
 - **Chat**: LLM reply and `needs_new_content` flag
+- **Preferences**: update the user's content preferences JSON via LLM
 
 The service is built with **FastAPI** and is intentionally simple and modular.
 
@@ -106,9 +107,14 @@ Defines all **HTTP endpoints** exposed by this service.
   - Behavior: full orchestrator flow (generate queries in ratio → cache-or-scrape concurrent → dedupe with Redis shown → rank placeholder → filter score ≥ 0.6 → mix by ratio → return up to `limit`).
 
 - **`POST /agent/chat`**
-  - Request: `ChatRequest` (user_id, message, user_goal, user_profile, chat_history, current_content_ids).
-  - Response: `ChatResponse` (`chat_response`, `needs_new_content`, optional `search_queries`).
-  - Behavior: LLM placeholder; returns a generic reply and `needs_new_content = true`.
+  - Request: `ChatRequest` (`user_id`, `message`, `initial_prompt`, `enhanced_profile`, `preferences`, `recent_chats`).
+  - Response: `ChatResponse` (`chat_response`, `needs_new_content`).
+  - Behavior: LLM reply; `needs_new_content` is set based on the message content (see `build_chat_prompt`).
+
+- **`POST /agent/prefrences`**
+  - Request: `PreferencesRequest` (`user_id`, optional `preferences`, optional `recent_chats`).
+  - Response: `PreferencesResponse` (`preferences`: JSON object).
+  - Behavior: calls `build_preferences_prompt` + LLM to extract/update the user's content preferences JSON.
 
 This module is the **main integration surface** for the Go service.
 
@@ -124,6 +130,7 @@ Pydantic models describing the **agent contract** with the Go service.
 - **`GenerateContentRequest`**: request for `/agent/generate-content` (user_id, initial_prompt, enhanced_profile, preferences, recent_chats, limit).
 - **`Query`**: a single search query (`platform`, `query`); used optionally in `ChatResponse.search_queries`.
 - **`ChatRequest` / `ChatResponse`**: payloads for `/agent/chat`.
+- **`PreferencesRequest` / `PreferencesResponse`**: payloads for `/agent/prefrences`.
 
 These types mirror the Go `agent.Client` contracts.
 
