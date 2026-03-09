@@ -1,6 +1,9 @@
 package postgres
 
-import "context"
+import (
+	"context"
+	"encoding/json"
+)
 
 // PreferenceRepository persists user preferences in Postgres.
 type PreferenceRepository struct {
@@ -18,12 +21,16 @@ func (r *PreferenceRepository) UpdatePreferences(ctx context.Context, userID str
 	if preferences == nil {
 		preferences = map[string]any{}
 	}
+	payload, err := json.Marshal(preferences)
+	if err != nil {
+		return err
+	}
 	const query = `
 UPDATE users
-SET preferences = $2
+SET preferences = $2::jsonb
 WHERE id = $1;
 `
-	_, err := r.db.DB.ExecContext(ctx, query, userID, preferences)
+	_, err = r.db.DB.ExecContext(ctx, query, userID, string(payload))
 	return err
 }
 

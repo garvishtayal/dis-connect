@@ -65,4 +65,3 @@ LIMIT $2;
 	}
 	return messages, rows.Err()
 }
-
