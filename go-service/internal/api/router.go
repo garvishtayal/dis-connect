@@ -4,7 +4,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/garvishtayal/dis-connect/go-service/internal/api/handlers"
-	"github.com/garvishtayal/dis-connect/go-service/internal/api/middleware"
 )
 
 // Router holds all HTTP handlers.
@@ -44,17 +43,12 @@ func (r *Router) RegisterRoutes(engine *gin.Engine) {
 	engine.GET("/healthz", r.health.Health)
 
 	apiGroup := engine.Group("/api")
-	apiGroup.Use(middleware.RateLimit())
 
 	authGroup := apiGroup.Group("/auth")
 	{
 		authGroup.POST("/google", r.auth.SignInWithGoogle)
 		authGroup.POST("/apple", r.auth.SignInWithApple)
 	}
-
-	// Public test endpoints for content and chat (no auth/onboarding).
-	apiGroup.GET("/content", r.content.GetContent)
-	apiGroup.POST("/chat", r.chat.HandleChat)
 
 	protectedGroup := apiGroup.Group("")
 	protectedGroup.Use(r.firebaseAuth)
@@ -66,4 +60,8 @@ func (r *Router) RegisterRoutes(engine *gin.Engine) {
 
 	onboardedGroup := protectedGroup.Group("")
 	onboardedGroup.Use(r.onboarding)
+
+	// Protected content and chat endpoints (Firebase + onboarding).
+	onboardedGroup.GET("/content", r.content.GetContent)
+	onboardedGroup.POST("/chat", r.chat.HandleChat)
 }

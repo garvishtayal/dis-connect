@@ -20,7 +20,6 @@ go-service/
 │   │   │   ├── chat.go
 │   │   │   ├── content.go
 │   │   │   ├── health.go
-│   │   │   ├── preferences.go
 │   │   │   └── user.go
 │   │   ├── middleware/
 │   │   │   ├── cors.go
@@ -59,7 +58,6 @@ go-service/
 │       ├── auth_service.go
 │       ├── chat_service.go
 │       ├── content_service.go
-│       ├── preference_service.go
 │       └── user_service.go
 ├── .env.example
 ├── Dockerfile
@@ -113,11 +111,10 @@ All routes are registered here. Protected routes require a valid **Firebase ID t
 | POST | `/api/auth/google` | — | — | Auth | Sign in with Google (ID token). |
 | POST | `/api/auth/apple` | — | — | Auth | Sign in with Apple (ID token). |
 | POST | `/api/users` | Firebase | — | User | Create user (onboarding). Body: `initial_prompt`. Calls Python **understand-soul**; stores user and soul. |
-| POST | `/api/chat` | Firebase | Required | Chat | Send chat message. Returns placeholder response (chat service can be wired to Python **agent/chat**). |
+| POST | `/api/chat` | Firebase | Required | Chat | Send chat message. Calls Python **agent/chat**, may also trigger content generation. |
 | GET | `/api/content` | Firebase | Required | Content | Get content feed. Query: `user_id`, optional `limit`, `offset`. Calls Python **agent** `/agent/generate-content` with user profile from Postgres. |
-| POST | `/api/preferences` | Firebase | Required | Preferences | Update user preferences. Query: `user_id`; body: JSON preferences. Placeholder implementation. |
 
-**Rate limiting** is applied to the `/api` group. **CORS** and **request logging** are applied globally.
+**CORS** and **request logging** are applied globally. Per-user daily rate limits for chat and content are enforced in the services using Redis.
 
 ---
 
@@ -126,7 +123,7 @@ All routes are registered here. Protected routes require a valid **Firebase ID t
 - **`health.go`**: `GET /healthz` → `{"status": "ok"}`.
 - **`auth.go`**: `SignInWithGoogle`, `SignInWithApple` — bind `AuthRequest`, call `AuthService`, return token/user info.
 - **`user.go`**: `CreateUser` — requires Firebase UID from context, binds `CreateUserRequest` (e.g. `initial_prompt`), calls `UserService.CreateUser` (which calls Python **understand-soul** and persists user).
-- **`chat.go`**: `HandleChat` — binds `ChatRequest`, calls `ChatService.HandleChat` (currently placeholder).
+- **`chat.go`**: `HandleChat` — binds `ChatRequest`, calls `ChatService.HandleChat` (calls Python **agent/chat**, may attach new content).
 - **`content.go`**: `GetContent` — binds query to `ContentRequest` (`user_id`, `limit`, `offset`), calls `ContentService.GetContent` (agent generate-content + user profile from Postgres).
 
 ---
@@ -135,7 +132,7 @@ All routes are registered here. Protected routes require a valid **Firebase ID t
 
 - **`logger.go`**: Request logging.
 - **`cors.go`**: CORS configuration.
-- **`rate_limit.go`**: Rate limiting for `/api`.
+- **`rate_limit.go`**: Currently a no-op placeholder for potential future global rate limiting.
 - **`firebase_auth.go`**: Validates `Authorization: Bearer <token>` with Firebase, sets `firebase_uid`, `email`, `provider`, `claims` in context. **`RequireFirebaseUID(c)`** extracts UID for handlers.
 - **`onboarding.go`**: **OnboardingRequired** — after Firebase auth, checks Postgres that the user has completed onboarding; returns 403 if not. Applied to chat, content, and preferences.
 
@@ -179,7 +176,7 @@ These types are used by handlers, services, and agent contracts.
 - **`auth_service.go`**: **AuthService** — sign-in with Google/Apple; validates token, creates or finds user, returns auth response.
 - **`user_service.go`**: **UserService** — **CreateUser**: optionally calls **agent.UnderstandSoul** to get soul from initial prompt, then persists user via **UserRepository** (SetInitialPromptByFirebaseUID). Returns **CreateUserResponse** (user_id, soul, onboarding_completed).
 - **`content_service.go`**: **ContentService** — **GetContent**: loads user profile (initial_prompt, enhanced_profile, preferences) via **UserRepository.GetContentProfileByUserID**, builds **agent.GenerateContentRequest**, calls **agent.Client.GenerateContent** (Python `/agent/generate-content`), returns items; applies offset client-side.
-- **`chat_service.go`**: **ChatService** — **HandleChat**: placeholder; returns a fixed message and `needs_new_content: false`. Can be wired to **agent.Client.Chat**.
+- **`chat_service.go`**: **ChatService** — **HandleChat**: loads user profile, calls **agent.Client.Chat** (Python `/agent/chat`), records chat history, may fetch new content, and periodically updates preferences in Postgres via the Python preferences endpoint.
 
 ---
 
@@ -198,8 +195,9 @@ Same database can be used for users, chat, and content metadata; Redis is availa
 
 ### Redis (`internal/repository/redis/`)
 
-- **`client.go`**: **`NewClient(cfg)`** — wraps **config.NewRedisClient**. Redis is configured in **config** and repositories exist; they are not yet wired in **app.go** but are available for:
-- **`dedup_repository.go`**: **MarkShown(userID, url)**, **WasShown(userID, url)** — set/key `shown:{userID}` (e.g. for content dedup).
+- **`client.go`**: **`NewClient(cfg)`** — wraps **config.NewRedisClient**.
+- **`dedup_repository.go`**: **MarkShown(userID, url)**, **WasShown(userID, url)** — set/key `shown:{userID}` (e.g. for content dedup). Wired into `ContentService` to track which URLs have been shown.
+- **`rate_limit_repository.go`**: **RateLimitRepository** — per-key daily counters based on Redis `INCR` + `EXPIRE`; used by `ChatService` and `ContentService` to enforce per-user chat and content quotas.
 
 ---
 
@@ -245,7 +243,7 @@ Same database can be used for users, chat, and content metadata; Redis is availa
 
 ## Summary
 
-- **Go service** = main API (Gin): auth (Google/Apple via Firebase), user onboarding (with Python understand-soul), content feed (via agent generate-content + user profile from Postgres), chat and preferences (placeholders).
+- **Go service** = main API (Gin): auth (Google/Apple via Firebase), user onboarding (with Python understand-soul), content feed (via agent generate-content + user profile from Postgres), chat (via Python agent) and background preference updates.
 - **Python service** = agent/content engine: understand-soul, generate-content, chat; Go calls it via the **agent client**.
-- **Postgres** = users, onboarding state, and (optionally) chat/content tables.
-- **Redis** = configured; repos for dedup, preferences, and cache exist and can be wired in **app.go** when needed.
+- **Postgres** = users, onboarding state, chat history, and content metadata.
+- **Redis** = configured; repos for dedup and per-user daily rate limiting are wired in **app.go**.
