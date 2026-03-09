@@ -49,5 +49,4 @@ def chat(req: ChatRequest) -> ChatResponse:
     return ChatResponse(
         chat_response=chat_response,
         needs_new_content=needs_new_content,
-        search_queries=None,
     )

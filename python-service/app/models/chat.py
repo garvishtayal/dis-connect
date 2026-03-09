@@ -47,7 +47,7 @@ class ChatRequest(BaseModel):
 
 
 # Response for /agent/chat.
+# Matches Go ChatResponse: only chat_response and needs_new_content.
 class ChatResponse(BaseModel):
     chat_response: str
     needs_new_content: bool
-    search_queries: list[Query] | None = None

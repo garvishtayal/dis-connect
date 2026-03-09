@@ -67,9 +67,8 @@ type ChatRequest struct {
 
 // ChatResponse is the /agent/chat response payload.
 type ChatResponse struct {
-	ChatResponse    string  `json:"chat_response"`
-	NeedsNewContent bool    `json:"needs_new_content"`
-	SearchQueries   []Query `json:"search_queries"`
+	ChatResponse    string `json:"chat_response"`
+	NeedsNewContent bool   `json:"needs_new_content"`
 }
 
 // Client wraps Python agent API calls.

@@ -49,6 +49,3 @@ endpoints:
     response:
       chat_response: string
       needs_new_content: boolean
-      search_queries:
-        - platform: string
-          query: string
