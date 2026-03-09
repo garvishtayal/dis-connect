@@ -16,6 +16,7 @@ import (
 	"github.com/garvishtayal/dis-connect/go-service/internal/auth"
 	"github.com/garvishtayal/dis-connect/go-service/internal/config"
 	"github.com/garvishtayal/dis-connect/go-service/internal/repository/postgres"
+	redisrepo "github.com/garvishtayal/dis-connect/go-service/internal/repository/redis"
 	"github.com/garvishtayal/dis-connect/go-service/internal/service"
 )
 
@@ -48,6 +49,8 @@ func BuildRouter() (*gin.Engine, error) {
 		return nil, err
 	}
 	userRepo := postgres.NewUserRepository(pgClient)
+	redisClient := redisrepo.NewClient(cfg)
+	dedupRepo := redisrepo.NewDedupRepository(redisClient)
 
 	router := gin.New()
 
@@ -60,7 +63,7 @@ func BuildRouter() (*gin.Engine, error) {
 	authSvc := service.NewAuthService(tokenValidator, userRepo)
 	userSvc := service.NewUserService(userRepo, agentSvc)
 	chatSvc := service.NewChatService()
-	contentSvc := service.NewContentService(agentSvc, userRepo)
+	contentSvc := service.NewContentService(agentSvc, userRepo, dedupRepo)
 	preferenceSvc := service.NewPreferenceService()
 	firebaseAuth := middleware.FirebaseAuth(tokenValidator)
 	onboardingRequired := middleware.OnboardingRequired(userRepo)

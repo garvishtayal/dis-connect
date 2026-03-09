@@ -7,19 +7,26 @@ import (
 	"github.com/garvishtayal/dis-connect/go-service/internal/agent"
 	"github.com/garvishtayal/dis-connect/go-service/internal/models"
 	"github.com/garvishtayal/dis-connect/go-service/internal/repository/postgres"
+	redisrepo "github.com/garvishtayal/dis-connect/go-service/internal/repository/redis"
 )
 
 // ContentService handles content fetching by calling the Python agent generate-content API.
 type ContentService struct {
-	agent    *agent.Client
-	userRepo *postgres.UserRepository
+	agent     *agent.Client
+	userRepo  *postgres.UserRepository
+	dedupRepo *redisrepo.DedupRepository
 }
 
 // NewContentService creates a new ContentService.
-func NewContentService(agentClient *agent.Client, userRepo *postgres.UserRepository) *ContentService {
+func NewContentService(
+	agentClient *agent.Client,
+	userRepo *postgres.UserRepository,
+	dedupRepo *redisrepo.DedupRepository,
+) *ContentService {
 	return &ContentService{
-		agent:    agentClient,
-		userRepo: userRepo,
+		agent:     agentClient,
+		userRepo:  userRepo,
+		dedupRepo: dedupRepo,
 	}
 }
 
@@ -62,6 +69,17 @@ func (s *ContentService) GetContent(ctx context.Context, req models.ContentReque
 	items := resp.Items
 	if resp.Items == nil {
 		items = []models.ContentItem{}
+	}
+
+	// Mark shown in Redis (user:{id}:shown SET of URLs). Python get_shown_urls() reads this for dedup.
+	if s.dedupRepo != nil {
+		urls := make([]string, 0, len(items))
+		for _, it := range items {
+			if it.URL != "" {
+				urls = append(urls, it.URL)
+			}
+		}
+		_ = s.dedupRepo.MarkShownBatch(ctx, req.UserID, urls)
 	}
 
 	// Apply offset client-side (Python API supports limit only).
