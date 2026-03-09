@@ -2,11 +2,14 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/garvishtayal/dis-connect/go-service/internal/agent"
 	"github.com/garvishtayal/dis-connect/go-service/internal/models"
 	"github.com/garvishtayal/dis-connect/go-service/internal/repository/postgres"
+	redisrepo "github.com/garvishtayal/dis-connect/go-service/internal/repository/redis"
 )
 
 // ChatService handles chat flows via the Python agent and content service.
@@ -17,16 +20,21 @@ type ChatService struct {
 	chatRepo           *postgres.ChatRepository
 	preferenceRepo     *postgres.PreferenceRepository
 	preferencesEnabled bool
+	rateLimitRepo      *redisrepo.RateLimitRepository
 }
 
+// ErrChatLimit is returned when daily chat quota is exceeded.
+var ErrChatLimit = errors.New("chat daily limit reached")
+
 // NewChatService creates a new ChatService.
-func NewChatService(agentClient *agent.Client, contentService *ContentService, userRepo *postgres.UserRepository, chatRepo *postgres.ChatRepository, preferenceRepo *postgres.PreferenceRepository) *ChatService {
+func NewChatService(agentClient *agent.Client, contentService *ContentService, userRepo *postgres.UserRepository, chatRepo *postgres.ChatRepository, preferenceRepo *postgres.PreferenceRepository, rateLimitRepo *redisrepo.RateLimitRepository) *ChatService {
 	return &ChatService{
 		agent:              agentClient,
 		contentService:     contentService,
 		userRepo:           userRepo,
 		chatRepo:           chatRepo,
 		preferenceRepo:     preferenceRepo,
+		rateLimitRepo:      rateLimitRepo,
 		preferencesEnabled: chatRepo != nil && preferenceRepo != nil,
 	}
 }
@@ -39,6 +47,18 @@ func (s *ChatService) HandleChat(ctx context.Context, req models.ChatRequest) (*
 
 	if s.userRepo == nil {
 		return nil, fmt.Errorf("user repository is not configured")
+	}
+
+	// Enforce daily per-user chat quota.
+	if s.rateLimitRepo != nil {
+		key := fmt.Sprintf("rl:chat:%s:%s", req.UserID, time.Now().UTC().Format("2006-01-02"))
+		ok, _, err := s.rateLimitRepo.AllowDaily(ctx, key, 20)
+		if err != nil {
+			return nil, fmt.Errorf("chat rate limit: %w", err)
+		}
+		if !ok {
+			return nil, ErrChatLimit
+		}
 	}
 
 	// Load user profile once so chat has the same context as content.
@@ -98,6 +118,19 @@ func (s *ChatService) HandleChat(ctx context.Context, req models.ChatRequest) (*
 
 	if !agentResp.NeedsNewContent || s.contentService == nil {
 		return result, nil
+	}
+
+	// Enforce shared daily content quota for chat-triggered content.
+	if s.rateLimitRepo != nil {
+		key := fmt.Sprintf("rl:content:%s:%s", req.UserID, time.Now().UTC().Format("2006-01-02"))
+		ok, _, err := s.rateLimitRepo.AllowDaily(ctx, key, 10)
+		if err != nil {
+			return result, nil
+		}
+		if !ok {
+			result.NeedsNewContent = false
+			return result, nil
+		}
 	}
 
 	contentReq := models.ContentRequest{

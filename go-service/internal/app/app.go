@@ -53,6 +53,7 @@ func BuildRouter() (*gin.Engine, error) {
 	preferenceRepo := postgres.NewPreferenceRepository(pgClient)
 	redisClient := redisrepo.NewClient(cfg)
 	dedupRepo := redisrepo.NewDedupRepository(redisClient)
+	rateLimitRepo := redisrepo.NewRateLimitRepository(redisClient)
 
 	router := gin.New()
 
@@ -64,8 +65,8 @@ func BuildRouter() (*gin.Engine, error) {
 	agentSvc := agentclient.NewClient(cfg.AgentBaseURL)
 	authSvc := service.NewAuthService(tokenValidator, userRepo)
 	userSvc := service.NewUserService(userRepo, agentSvc)
-	contentSvc := service.NewContentService(agentSvc, userRepo, dedupRepo)
-	chatSvc := service.NewChatService(agentSvc, contentSvc, userRepo, chatRepo, preferenceRepo)
+	contentSvc := service.NewContentService(agentSvc, userRepo, dedupRepo, rateLimitRepo)
+	chatSvc := service.NewChatService(agentSvc, contentSvc, userRepo, chatRepo, preferenceRepo, rateLimitRepo)
 	firebaseAuth := middleware.FirebaseAuth(tokenValidator)
 	onboardingRequired := middleware.OnboardingRequired(userRepo)
 

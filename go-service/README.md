@@ -54,9 +54,7 @@ go-service/
 │   │   │   └── migrations/
 │   │   └── redis/
 │   │       ├── client.go
-│   │       ├── cache_repository.go
-│   │       ├── dedup_repository.go
-│   │       └── preference_repository.go
+│   │       └── dedup_repository.go
 │   └── service/
 │       ├── auth_service.go
 │       ├── chat_service.go
@@ -202,8 +200,6 @@ Same database can be used for users, chat, and content metadata; Redis is availa
 
 - **`client.go`**: **`NewClient(cfg)`** — wraps **config.NewRedisClient**. Redis is configured in **config** and repositories exist; they are not yet wired in **app.go** but are available for:
 - **`dedup_repository.go`**: **MarkShown(userID, url)**, **WasShown(userID, url)** — set/key `shown:{userID}` (e.g. for content dedup).
-- **`preference_repository.go`**: **SetPreferences(userID, json)**, **GetPreferences(userID)** — key `prefs:{userID}`.
-- **`cache_repository.go`**: Search/content cache (e.g. keyed by query hash).
 
 ---
 

@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/garvishtayal/dis-connect/go-service/internal/agent"
 	"github.com/garvishtayal/dis-connect/go-service/internal/models"
@@ -12,21 +14,27 @@ import (
 
 // ContentService handles content fetching by calling the Python agent generate-content API.
 type ContentService struct {
-	agent     *agent.Client
-	userRepo  *postgres.UserRepository
-	dedupRepo *redisrepo.DedupRepository
+	agent         *agent.Client
+	userRepo      *postgres.UserRepository
+	dedupRepo     *redisrepo.DedupRepository
+	rateLimitRepo *redisrepo.RateLimitRepository
 }
+
+// ErrContentLimit is returned when daily content quota is exceeded.
+var ErrContentLimit = errors.New("content daily limit reached")
 
 // NewContentService creates a new ContentService.
 func NewContentService(
 	agentClient *agent.Client,
 	userRepo *postgres.UserRepository,
 	dedupRepo *redisrepo.DedupRepository,
+	rateLimitRepo *redisrepo.RateLimitRepository,
 ) *ContentService {
 	return &ContentService{
-		agent:     agentClient,
-		userRepo:  userRepo,
-		dedupRepo: dedupRepo,
+		agent:         agentClient,
+		userRepo:      userRepo,
+		dedupRepo:     dedupRepo,
+		rateLimitRepo: rateLimitRepo,
 	}
 }
 
@@ -37,6 +45,18 @@ func (s *ContentService) GetContent(ctx context.Context, req models.ContentReque
 	}
 	if s.userRepo == nil {
 		return nil, fmt.Errorf("user repository is not configured")
+	}
+
+	// Enforce daily per-user content quota (shared with chat).
+	if s.rateLimitRepo != nil {
+		key := fmt.Sprintf("rl:content:%s:%s", req.UserID, time.Now().UTC().Format("2006-01-02"))
+		ok, _, err := s.rateLimitRepo.AllowDaily(ctx, key, 10)
+		if err != nil {
+			return nil, fmt.Errorf("content rate limit: %w", err)
+		}
+		if !ok {
+			return nil, ErrContentLimit
+		}
 	}
 
 	profile, err := s.userRepo.GetContentProfileByUserID(ctx, req.UserID)

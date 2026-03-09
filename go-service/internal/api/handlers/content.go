@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -29,6 +30,10 @@ func (h *ContentHandler) GetContent(c *gin.Context) {
 
 	items, err := h.contentService.GetContent(c.Request.Context(), req)
 	if err != nil {
+		if errors.Is(err, service.ErrContentLimit) {
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "daily content limit reached"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch content", "detail": err.Error()})
 		return
 	}

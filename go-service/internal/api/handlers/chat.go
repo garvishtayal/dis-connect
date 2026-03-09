@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -29,6 +30,10 @@ func (h *ChatHandler) HandleChat(c *gin.Context) {
 
 	resp, err := h.chatService.HandleChat(c.Request.Context(), req)
 	if err != nil {
+		if errors.Is(err, service.ErrChatLimit) {
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "daily chat limit reached"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to handle chat"})
 		return
 	}
