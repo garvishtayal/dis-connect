@@ -33,7 +33,8 @@ RETURNING id;
 }
 
 // UpsertAuthUser inserts or updates a user row keyed by Firebase UID.
-func (r *UserRepository) UpsertAuthUser(ctx context.Context, u *models.User) (string, error) {
+// Returns the internal user ID and the current onboarding_completed status.
+func (r *UserRepository) UpsertAuthUser(ctx context.Context, u *models.User) (string, bool, error) {
 	const query = `
 INSERT INTO users (
 	firebase_uid,
@@ -52,9 +53,10 @@ DO UPDATE SET
 	photo_url = COALESCE(EXCLUDED.photo_url, users.photo_url),
 	provider = EXCLUDED.provider,
 	last_sign_in_at = NOW()
-RETURNING id;
+RETURNING id, onboarding_completed;
 `
 	var id string
+	var onboardingCompleted bool
 	if err := r.db.DB.QueryRowContext(
 		ctx,
 		query,
@@ -64,10 +66,10 @@ RETURNING id;
 		u.PhotoURL,
 		u.Provider,
 		u.InitialPrompt,
-	).Scan(&id); err != nil {
-		return "", err
+	).Scan(&id, &onboardingCompleted); err != nil {
+		return "", false, err
 	}
-	return id, nil
+	return id, onboardingCompleted, nil
 }
 
 // IsOnboardingCompletedByFirebaseUID returns onboarding status for a Firebase user.

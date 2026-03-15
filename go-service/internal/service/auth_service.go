@@ -52,14 +52,15 @@ func (s *AuthService) signIn(ctx context.Context, req models.AuthRequest, expect
 	}
 	provider = normalizeProvider(expectedProvider, provider)
 
+	onboardingCompleted := false
 	if s.userRepo != nil {
 		// Persist or update the user row on successful Firebase sign-in.
-		_, err = s.userRepo.UpsertAuthUser(ctx, &models.User{
-			FirebaseUID:   token.UID,
-			Email:         extractEmail(token),
-			DisplayName:   extractDisplayName(token),
-			PhotoURL:      extractPhotoURL(token),
-			Provider:      provider,
+		_, onboardingCompleted, err = s.userRepo.UpsertAuthUser(ctx, &models.User{
+			FirebaseUID: token.UID,
+			Email:       extractEmail(token),
+			DisplayName: extractDisplayName(token),
+			PhotoURL:    extractPhotoURL(token),
+			Provider:    provider,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("upsert auth user: %w", err)
@@ -67,9 +68,10 @@ func (s *AuthService) signIn(ctx context.Context, req models.AuthRequest, expect
 	}
 
 	return &models.AuthResponse{
-		UserID:   token.UID,
-		Email:    extractEmail(token),
-		Provider: provider,
+		UserID:              token.UID,
+		Email:               extractEmail(token),
+		Provider:            provider,
+		OnboardingCompleted: onboardingCompleted,
 	}, nil
 }
 

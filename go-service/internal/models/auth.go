@@ -16,7 +16,8 @@ type AuthRequest struct {
 
 // AuthResponse represents a basic authenticated user.
 type AuthResponse struct {
-	UserID   string `json:"user_id"`
-	Email    string `json:"email,omitempty"`
-	Provider string `json:"provider,omitempty"`
+	UserID              string `json:"user_id"`
+	Email               string `json:"email,omitempty"`
+	Provider            string `json:"provider,omitempty"`
+	OnboardingCompleted bool   `json:"onboarding_completed"`
 }
