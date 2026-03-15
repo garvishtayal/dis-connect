@@ -1,0 +1,25 @@
+@import "./fonts.css";
+@import "./tailwind.css";
+@import "./theme.css";
+
+.upgrade-shine {
+  background: linear-gradient(
+    90deg,
+    #0d9488,
+    #14b8a6,
+    #5eead4,
+    #14b8a6,
+    #0d9488
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: shine 3s linear infinite;
+  cursor: pointer;
+}
+
+@keyframes shine {
+  to {
+    background-position: 200% center;
+  }
+}
