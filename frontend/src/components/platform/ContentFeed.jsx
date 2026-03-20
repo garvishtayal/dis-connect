@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Masonry from 'react-responsive-masonry'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ContentCard } from './ContentCard'
-import { useContentFeed } from '../../hooks/useContentFeed'
+import { fetchContent } from '../../api/content'
+import { getStoredUserId } from '../../lib/session'
+import { useAuthState } from '../../hooks/useAuthState'
 
 function interleaveContent(items) {
+  if (!Array.isArray(items)) return []
   const images = []
   const shorts = []
   const videos = []
@@ -15,7 +18,7 @@ function interleaveContent(items) {
     if (it.type === 'image') images.push(it)
     else if (it.type === 'short' || it.type === 'reel') shorts.push(it)
     else if (it.type === 'video') videos.push(it)
-    else images.push(it) // unknown types fall back to images
+    else images.push(it)
   }
 
   const result = []
@@ -30,48 +33,84 @@ function interleaveContent(items) {
   return result
 }
 
+const MAX_RETRIES = 3
+
 export function ContentFeed() {
   const [activeItemId, setActiveItemId] = useState(null)
-  const bottomSentinelRef = useRef(null)
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    isFetchingNextPage,
-    fetchNextPage,
-    hasNextPage,
-  } = useContentFeed({ limit: 40 })
+  const [items, setItems] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [isFetchingMore, setIsFetchingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [errorCount, setErrorCount] = useState(0)
+  const { user, loading: isAuthLoading } = useAuthState()
+  const userId = getStoredUserId()
+  const limit = 40
 
-  // Interleave within each page so adding a new page doesn't reshuffle earlier items.
-  const mixedContent = (data?.pages ?? []).flatMap((page) =>
-    interleaveContent(page?.items ?? []),
-  )
+  async function loadContent(append) {
+    if (!userId || !user) return
+    if (!hasMore || errorCount >= MAX_RETRIES) return
 
-  useEffect(() => {
-    if (isError && error?.message) {
-      toast.error(error.message, { duration: 4000 })
+    const setFlag = append ? setIsFetchingMore : setIsLoading
+    setFlag(true)
+    try {
+      const res = await fetchContent({ userId, limit, offset: 0 })
+      const batch = Array.isArray(res)
+        ? res
+        : Array.isArray(res?.items)
+          ? res.items
+          : []
+
+      setItems((prev) => {
+        if (!append) return batch
+
+        const seen = new Set(prev.map((it) => it?.id || it?.url).filter(Boolean))
+        const fresh = batch.filter((it) => {
+          const key = it?.id || it?.url
+          if (!key || seen.has(key)) return false
+          seen.add(key)
+          return true
+        })
+
+        if (fresh.length === 0) {
+          setHasMore(false)
+          return prev
+        }
+        return [...prev, ...fresh]
+      })
+
+      setErrorCount(0)
+      if (batch.length === 0) setHasMore(false)
+    } catch (err) {
+      setErrorCount((n) => n + 1)
+      toast.error(err?.message || 'Failed to fetch content.', { duration: 4000 })
+    } finally {
+      setFlag(false)
     }
-  }, [isError, error?.message])
+  }
 
   useEffect(() => {
-    const el = bottomSentinelRef.current
-    if (!el) return
-    if (!('IntersectionObserver' in window)) return
+    if (isAuthLoading || !userId || !user) return
+    if (items.length > 0) return
+    void loadContent(false)
+  }, [isAuthLoading, userId, user])
 
-    const obs = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0]
-        if (!entry?.isIntersecting) return
-        if (!hasNextPage || isFetchingNextPage) return
-        fetchNextPage()
-      },
-      { root: null, threshold: 0.1 },
-    )
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!hasMore || isFetchingMore || isLoading) return
+      if (errorCount >= MAX_RETRIES) return
 
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage])
+      const scrolledToBottom =
+        window.innerHeight + window.scrollY >=
+        document.documentElement.scrollHeight - 1000
+
+      if (scrolledToBottom) void loadContent(true)
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [hasMore, isFetchingMore, isLoading, errorCount])
+
+  const mixedContent = interleaveContent(items)
 
   return (
     <>
@@ -86,9 +125,7 @@ export function ContentFeed() {
         ))}
       </Masonry>
 
-      <div ref={bottomSentinelRef} className="h-2" />
-
-      {(isLoading || isFetchingNextPage) && (
+      {(isLoading || isFetchingMore) && (
         <div className="flex justify-center items-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-[#0D9488]" />
         </div>
@@ -96,4 +133,3 @@ export function ContentFeed() {
     </>
   )
 }
-

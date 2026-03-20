@@ -99,44 +99,9 @@ function isImageUrl(url) {
   )
 }
 
-function getPinterestPinId(url) {
-  if (!url) return null
-  // Example: https://www.pinterest.com/pin/PIN_ID/
-  const match = url.match(/pinterest\.com\/pin\/([^/?#]+)/i)
-  return match?.[1] || null
-}
-
-function PinterestEmbed({ url, title }) {
-  const pinId = getPinterestPinId(url)
-  if (!pinId) {
-    return (
-      <div className="w-full bg-gray-100 text-gray-600 text-sm p-6">
-        Unable to embed this Pinterest item.
-      </div>
-    )
-  }
-
-  // Pinterest embeds often vary; this keeps Masonry layout stable.
-  const paddingTop = '120%' // approx vertical card
-
-  return (
-    <div className="relative w-full overflow-hidden" style={{ paddingTop }}>
-      <iframe
-        className="absolute inset-0 w-full h-full"
-        src={`https://assets.pinterest.com/ext/embed.html?id=${pinId}`}
-        title={title || 'Pinterest'}
-        loading="lazy"
-        frameBorder="0"
-        scrolling="no"
-        allow="autoplay; encrypted-media"
-        referrerPolicy="strict-origin-when-cross-origin"
-      />
-    </div>
-  )
-}
-
 export function ContentCard({ item, activeItemId, onActivate }) {
   const [isHovered, setIsHovered] = useState(false)
+  const [imageFailed, setImageFailed] = useState(false)
 
   const type = item?.type
   const isImage = type === 'image'
@@ -173,22 +138,31 @@ export function ContentCard({ item, activeItemId, onActivate }) {
         <div className="relative">
           {isImage && (
             <>
-              {isImageUrl(item?.url) ? (
-                // Force a consistent portrait card height for direct image URLs.
-                // Without this, wide/short images create very small cards in Masonry.
-                <div
-                  className="relative w-full overflow-hidden"
-                  style={{ paddingTop: '120%' }}
-                >
-                  <img
-                    src={item?.url}
-                    alt={item?.title || 'Pinterest image'}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
+              {isImageUrl(item?.url) && !imageFailed ? (
+                <img
+                  src={item?.url}
+                  alt={item?.title || 'Pinterest image'}
+                  className="w-full h-auto object-cover"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  onError={() => setImageFailed(true)}
+                />
               ) : (
-                <PinterestEmbed url={item?.url} title={item?.title} />
+                <a
+                  href={item?.url || '#'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block w-full bg-gray-100 hover:bg-gray-200 transition-colors p-6 text-center min-h-[200px] flex items-center justify-center"
+                >
+                  <div>
+                    <p className="text-gray-700 text-sm font-medium mb-2">
+                      Open on Pinterest
+                    </p>
+                    <p className="text-gray-500 text-xs line-clamp-3">
+                      {item?.title || 'View this item in a new tab'}
+                    </p>
+                  </div>
+                </a>
               )}
             </>
           )}
