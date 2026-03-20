@@ -51,6 +51,7 @@ func BuildRouter() (*gin.Engine, error) {
 	userRepo := postgres.NewUserRepository(pgClient)
 	chatRepo := postgres.NewChatRepository(pgClient)
 	preferenceRepo := postgres.NewPreferenceRepository(pgClient)
+	upgradeRepo := postgres.NewUpgradeRepository(pgClient)
 	redisClient := redisrepo.NewClient(cfg)
 	dedupRepo := redisrepo.NewDedupRepository(redisClient)
 	rateLimitRepo := redisrepo.NewRateLimitRepository(redisClient)
@@ -67,6 +68,7 @@ func BuildRouter() (*gin.Engine, error) {
 	userSvc := service.NewUserService(userRepo, agentSvc)
 	contentSvc := service.NewContentService(agentSvc, userRepo, dedupRepo, rateLimitRepo)
 	chatSvc := service.NewChatService(agentSvc, contentSvc, userRepo, chatRepo, preferenceRepo, rateLimitRepo)
+	upgradeSvc := service.NewUpgradeService(upgradeRepo, userRepo)
 	firebaseAuth := middleware.FirebaseAuth(tokenValidator)
 	onboardingRequired := middleware.OnboardingRequired(userRepo)
 
@@ -75,6 +77,7 @@ func BuildRouter() (*gin.Engine, error) {
 	userHandler := handlers.NewUserHandler(userSvc)
 	chatHandler := handlers.NewChatHandler(chatSvc)
 	contentHandler := handlers.NewContentHandler(contentSvc)
+	upgradeHandler := handlers.NewUpgradeHandler(upgradeSvc)
 	healthHandler := handlers.NewHealthHandler()
 
 	// Register all API routes.
@@ -83,6 +86,7 @@ func BuildRouter() (*gin.Engine, error) {
 		userHandler,
 		chatHandler,
 		contentHandler,
+		upgradeHandler,
 		healthHandler,
 		firebaseAuth,
 		onboardingRequired,

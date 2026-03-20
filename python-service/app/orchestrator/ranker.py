@@ -49,6 +49,8 @@ def _parse_rank_response(raw: str) -> dict[str, float]:
 
 
 # Rank raw items via LLM (build_rank_prompt); return ContentItems with score.
+# If the LLM call fails for any reason, falls back to DEFAULT_SCORE so the
+# pipeline still returns content rather than crashing.
 def rank_raw_items(
     raw: list[dict[str, Any]],
     initial_prompt: str,
@@ -57,11 +59,19 @@ def rank_raw_items(
 ) -> list[ContentItem]:
     if not raw:
         return []
-    items_summary = _items_summary(raw)
-    user_prompt = build_rank_prompt(initial_prompt, enhanced_profile, recent_chats, items_summary)
-    full_prompt = f"{SYSTEM_PROMPTS['ranking']}\n\n{user_prompt}"
-    response = generate_text(full_prompt)
-    scores_by_id = _parse_rank_response(response) if response else {}
+
+    scores_by_id: dict[str, float] = {}
+    try:
+        items_summary = _items_summary(raw)
+        user_prompt = build_rank_prompt(initial_prompt, enhanced_profile, recent_chats, items_summary)
+        full_prompt = f"{SYSTEM_PROMPTS['ranking']}\n\n{user_prompt}"
+        response = generate_text(full_prompt)
+        if response:
+            scores_by_id = _parse_rank_response(response)
+    except Exception as e:
+        # Ranking is best-effort — serve unscored content rather than returning nothing.
+        print(f"[ranker] LLM failed ({type(e).__name__}) — all items get default score {DEFAULT_SCORE}")
+
     result: list[ContentItem] = []
     for r in raw:
         id_ = r.get("id", "")

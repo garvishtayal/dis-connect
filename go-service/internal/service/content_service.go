@@ -96,7 +96,7 @@ func (s *ContentService) GetContent(ctx context.Context, req models.ContentReque
 		items = []models.ContentItem{}
 	}
 
-	// Mark shown in Redis (user:{id}:shown SET of URLs). Python get_shown_urls() reads this for dedup.
+	// Mark shown in Redis so Python deduplicates on next generate-content call.
 	if s.dedupRepo != nil {
 		urls := make([]string, 0, len(items))
 		for _, it := range items {
@@ -105,13 +105,6 @@ func (s *ContentService) GetContent(ctx context.Context, req models.ContentReque
 			}
 		}
 		_ = s.dedupRepo.MarkShownBatch(ctx, userID, urls)
-	}
-
-	// Apply offset client-side (Python API supports limit only).
-	if req.Offset > 0 && len(items) > req.Offset {
-		items = items[req.Offset:]
-	} else if req.Offset > 0 {
-		items = []models.ContentItem{}
 	}
 
 	return items, nil

@@ -10,9 +10,11 @@ from app.config import REDIS_URL
 KEY_SHOWN = "user:{user_id}:shown"
 KEY_PREFERENCES = "user:{user_id}:preferences"
 KEY_SEARCH = "search:{query_hash}"
+KEY_QUERIES = "user:{user_id}:last_queries"
 TTL_SHOWN_DAYS = 7
 TTL_PREFERENCES_DAYS = 30
 TTL_SEARCH_SECONDS = 3600  # 1 hour
+TTL_QUERIES_SECONDS = 86400 * 3  # 3 days
 
 
 def get_client() -> aioredis.Redis:
@@ -77,6 +79,35 @@ async def set_search_cached(platform: str, query: str, results: list[dict[str, A
         try:
             key = KEY_SEARCH.replace("{query_hash}", _search_hash(platform, query, content_type))
             await client.set(key, json.dumps(results), ex=TTL_SEARCH_SECONDS)
+        finally:
+            await client.aclose()
+    except Exception:
+        pass
+
+
+async def get_cached_queries(user_id: str) -> list[dict[str, str]] | None:
+    """Returns the last successful queries for this user, or None on miss/error."""
+    try:
+        client = get_client()
+        try:
+            key = KEY_QUERIES.replace("{user_id}", user_id)
+            data = await client.get(key)
+            if not data:
+                return None
+            return json.loads(data)
+        finally:
+            await client.aclose()
+    except Exception:
+        return None
+
+
+async def set_cached_queries(user_id: str, queries: list[dict[str, str]]) -> None:
+    """Persists the last successful queries for fallback when LLM is unavailable."""
+    try:
+        client = get_client()
+        try:
+            key = KEY_QUERIES.replace("{user_id}", user_id)
+            await client.set(key, json.dumps(queries), ex=TTL_QUERIES_SECONDS)
         finally:
             await client.aclose()
     except Exception:

@@ -54,7 +54,7 @@ export function Navbar() {
       <div className="flex items-center justify-between h-14 px-6">
         <Link to="/platform" className="flex items-center group">
           <img
-            src="https://i.ibb.co/99SGjPd8/Gemini-Generated-Image-150iyg150iyg150i.png"
+            src="/logo-dis-connect-small.png"
             alt="Dis-Connect Logo"
             className="w-[120px] object-contain"
           />

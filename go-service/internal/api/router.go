@@ -12,6 +12,7 @@ type Router struct {
 	user         *handlers.UserHandler
 	chat         *handlers.ChatHandler
 	content      *handlers.ContentHandler
+	upgrade      *handlers.UpgradeHandler
 	health       *handlers.HealthHandler
 	firebaseAuth gin.HandlerFunc
 	onboarding   gin.HandlerFunc
@@ -23,6 +24,7 @@ func NewRouter(
 	user *handlers.UserHandler,
 	chat *handlers.ChatHandler,
 	content *handlers.ContentHandler,
+	upgrade *handlers.UpgradeHandler,
 	health *handlers.HealthHandler,
 	firebaseAuth gin.HandlerFunc,
 	onboarding gin.HandlerFunc,
@@ -32,6 +34,7 @@ func NewRouter(
 		user:         user,
 		chat:         chat,
 		content:      content,
+		upgrade:      upgrade,
 		health:       health,
 		firebaseAuth: firebaseAuth,
 		onboarding:   onboarding,
@@ -64,4 +67,6 @@ func (r *Router) RegisterRoutes(engine *gin.Engine) {
 	// Protected content and chat endpoints (Firebase + onboarding).
 	onboardedGroup.GET("/content", r.content.GetContent)
 	onboardedGroup.POST("/chat", r.chat.HandleChat)
+	onboardedGroup.POST("/upgrade", r.upgrade.UpsertUpgrade)
+	onboardedGroup.GET("/upgrade", r.upgrade.GetUpgrade)
 }

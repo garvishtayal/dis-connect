@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"errors"
-	"net/http"
 	"fmt"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 
@@ -46,4 +46,3 @@ func (h *ChatHandler) HandleChat(c *gin.Context) {
 
 	c.JSON(http.StatusOK, resp)
 }
-
