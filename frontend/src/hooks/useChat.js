@@ -6,12 +6,16 @@ export function useChat(options = {}) {
   return useMutation({
     mutationFn: (message) => sendChatMessage(message),
     onError: (err) => {
-      const msg = err?.message || 'Something went wrong.'
-      if (msg.toLowerCase().includes('limit')) {
+      if (err?.status === 429) {
         toast.error('Daily chat limit reached. Try again tomorrow.')
-      } else {
-        toast.error(msg)
+        return
       }
+      const msg = err?.message || 'Something went wrong.'
+      if (err?.status >= 500) {
+        toast.error('Chat failed. Please try again in a moment.')
+        return
+      }
+      toast.error(msg)
     },
     ...options,
   })

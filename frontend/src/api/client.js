@@ -16,6 +16,10 @@ export async function request(path, { auth: withAuth = false, ...options } = {})
   const url = path.startsWith('http') ? path : `${getApiUrl()}${path}`
   const res = await fetch(url, { ...options, headers })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || 'Request failed')
+  if (!res.ok) {
+    const err = new Error(data.error || data.detail || 'Request failed')
+    err.status = res.status
+    throw err
+  }
   return data
 }

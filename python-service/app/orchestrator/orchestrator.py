@@ -54,8 +54,15 @@ async def fetch_content(
         print(f"[orchestrator] raw combined: {len(combined)} items → by type: {by_type_raw}")
         combined = _dedupe_raw_by_id(combined)
         shown = await get_shown_urls(user_id)
-        filtered_raw = deduplicator.filter_already_shown_raw(combined, shown)
-        print(f"[orchestrator] after dedupe+shown filter: {len(filtered_raw)} items")
+        filtered_raw = deduplicator.allow_partial_old_raw(combined, shown, old_ratio=0.5)
+        by_type_after = {}
+        for r in filtered_raw:
+            t = r.get("type", "unknown")
+            by_type_after[t] = by_type_after.get(t, 0) + 1
+        print(
+            f"[orchestrator] after dedupe+50-50 fresh-old by type: "
+            f"{len(filtered_raw)} items → by type: {by_type_after}"
+        )
     except Exception as e:
         raise RuntimeError(f"Content generation failed at dedupe: {e}") from e
 

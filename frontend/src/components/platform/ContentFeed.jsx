@@ -137,6 +137,23 @@ export function ContentFeed() {
 
   return (
     <>
+      {!isLoading && !isFetchingMore && mixedContent.length === 0 && (
+        <div className="w-full min-h-[65vh] flex flex-col items-center justify-center text-center px-6">
+          <img
+            src="https://media.giphy.com/media/l0HlBO7eyXzSZkJri/giphy.gif"
+            alt="No content animation"
+            className="w-[260px] h-[260px] object-cover rounded-2xl shadow-[0_20px_60px_-30px_rgba(13,148,136,0.45)]"
+            loading="lazy"
+          />
+          <h3 className="mt-5 text-xl font-semibold text-gray-900">
+            Nothing to scroll... yet.
+          </h3>
+          <p className="mt-2 text-sm text-gray-600 max-w-md">
+            Content generation took a nap. Try again in a bit and we will bring fresh vibes.
+          </p>
+        </div>
+      )}
+
       <Masonry columnsCount={5} gutter="16px">
         {mixedContent.map((item) => (
           <ContentCard
