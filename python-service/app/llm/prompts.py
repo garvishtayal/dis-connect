@@ -56,7 +56,8 @@ THE GOAL:
 When they watch this content, they should feel "that's going to be my life." Not motivation porn — real windows into the daily reality of whoever they're becoming.
 
 CRITICAL — READ THE GOAL FIRST:
-The content must match THEIR specific dream. A cricketer needs cricket academies, IPL dressing rooms, net sessions, and the lifestyle of a professional athlete — not mountain cabins. A startup founder needs pitch rooms, product launches, founder culture. A doctor needs clinical excellence, respected consultants, hospital environments. Don't project one aesthetic onto every man. 
+The content must match THEIR specific dream. A cricketer needs cricket academies, IPL dressing rooms, net sessions, and the lifestyle of a professional athlete — not mountain cabins. A startup founder needs pitch rooms, product launches, founder culture. A doctor needs clinical excellence, respected consultants, hospital environments. Don't project one aesthetic onto every man.
+Also use RECENT CHAT INTENT when present: if they ask for something specific ("show UFC mindset clips", "give me Joe Rogan style podcasts", "show startup office tours"), include that directly in queries when it fits their profile and goals.
 
 UNIVERSAL THEMES (weave in where natural, don't force):
 - The "other side" — men who got where this person is going, living that life honestly
@@ -83,6 +84,13 @@ Total = 4 + 3 = 7. Stop at 7.
 
 OUTPUT: Return ONLY a JSON array of exactly 7 objects. Each has "platform" and "query". No markdown.
 [{"platform": "pinterest", "query": "..."}, ... 4 pinterest, 3 youtube ...]
+
+RELEVANCE RULE:
+- Blend 2 signals: (1) long-term profile + (2) most recent user ask.
+- If recent ask is relevant, prioritize it in at least 3 of 7 queries.
+- Adjacent-interest expansion is allowed only when logically connected to profile or ask.
+  Example: UFC / combat-sports interest can expand to Joe Rogan fight-camp conversations, fighter discipline podcasts, MMA day-in-life.
+- Never drift into unrelated trends.
 
 Every query should make a man feel the pull of who he's becoming.""",
 
@@ -218,6 +226,7 @@ OUTPUT (STRICT):
 - DEFAULT needs_new_content to false.
 - `needs_new_content` triggers a fresh batch of visual content for their feed. Be generous with it — when in doubt, set true.
 - SET needs_new_content = true if the user's message hints at ANY of:
+  - mention in chat to update feed/content
   - Asking for content/videos/images/reels/examples — directly or loosely ("give me...", "show me...", "find...")
   - Wanting inspiration, ideas to look at, or something to watch ("I need inspiration", "what should I watch?")
   - Wanting to see what others doing their thing look like ("show me examples", "what does that life look like?")
@@ -226,12 +235,10 @@ OUTPUT (STRICT):
 - SET needs_new_content = false for: check-ins, questions about themselves/context/goals, strategy/planning talk, anything with no visual angle.
 
 EXAMPLES:
-- "How do I stay consistent?": {{"chat_response": "Consistency is mostly about lowering the bar for starting, not raising it for finishing. Make the first step so small you can't say no to it.", "needs_new_content": false}}
-- "do you have context / what do you know about me / what are my goals?": {{"chat_response": "Yes — [summarise their profile honestly]. That's what I'm working with.", "needs_new_content": false}}
-- "I want to be inspired like Kobe": {{"chat_response": "That kind of hunger is worth something. Let me pull up content that shows what that level of dedication actually looks like — not the highlights, the work.", "needs_new_content": true}}
-- "give me fresh content": {{"chat_response": "Coming right up — let's refresh your feed with something that pulls you toward where you're going.", "needs_new_content": true}}
-- "I'm struggling to stay motivated": {{"chat_response": "That's the honest part of any long road. Let me show you some people who've been through the same wall — it helps to see it from the other side.", "needs_new_content": true}}
-- "should I focus on reels or long videos?": {{"chat_response": "Reels to build the audience, long videos to build the trust. Start with whichever you can do well and consistently.", "needs_new_content": false}}
+- "How do I stay consistent?": {{"chat_response": "Consistency comes from making the first rep easy and repeatable. I'll also pull up examples of routines and environments that make discipline easier to stick to.", "needs_new_content": true}}
+- "do you have context / what do you know about me / what are my goals?": {{"chat_response": "Yes — [summarise their profile honestly]. I can also refresh your feed with visuals that match those exact goals if you want.", "needs_new_content": false}}
+- "I want to be inspired like Kobe": {{"chat_response": "That kind of hunger is real. Let me pull content that shows the daily grind, focused training, and disciplined lifestyle behind that mindset.", "needs_new_content": true}}
+- "give me fresh content": {{"chat_response": "Perfect timing — refreshing your feed now with ideas and examples that match your direction.", "needs_new_content": true}}
 
 Return exactly ONE JSON object. No markdown, no explanation."""
 
@@ -278,7 +285,8 @@ THEIR PROFILE:
 {enhanced_profile}{prefs}{recent_context}
 
 TASK:
-Generate 16 queries that help them visually feel this life before they have it.
+Generate 7 queries that help them visually feel this life before they have it.
+Use RECENT TOPICS as active intent. If the user just asked for a specific type of content and it is relevant to their profile, generate direct queries for that ask.
 
 Think identity and lifestyle — not job title. Focus on:
 - The "other side of male life" — what earned freedom actually looks like day-to-day
@@ -287,6 +295,12 @@ Think identity and lifestyle — not job title. Focus on:
 - 1stMan aesthetic: mountains, wilderness, discipline, intentional living
 - Physical culture: MMA, martial arts, home gym, training with friends
 - Nomad / location-free coding life — the desk by the window, the mountain in the background
+
+Important relevance behavior:
+- The latest user ask should clearly show up in multiple queries when relevant.
+- You may include adjacent names/topics that match their ask.
+  Example: if user asks UFC-style motivation, queries can include UFC training camp, fighter routines, Joe Rogan MMA interviews.
+- Keep queries concrete and searchable, not poetic.
 
 Distribution — exactly: 4 Pinterest, 3 YouTube (7 total). Each item: "platform" and "query" only.
 

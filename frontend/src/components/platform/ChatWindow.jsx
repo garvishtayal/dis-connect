@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { Sparkles } from 'lucide-react'
-import { useQueryClient } from '@tanstack/react-query'
 import { useChat } from '../../hooks/useChat'
 import { useAuthState } from '../../hooks/useAuthState'
 import { getStoredUserId } from '../../lib/session'
@@ -10,6 +9,8 @@ const INTRO_DISPLAY =
 
 // Prompt sent to backend on behalf of the user (we display a nicer message immediately).
 const INTRO_PROMPT = 'hi give intro msg..'
+const FEED_REFRESH_MAX_TRIES = 6
+const FEED_REFRESH_WAIT_MS = 25000
 
 function SkeletonBubble() {
   return (
@@ -20,8 +21,28 @@ function SkeletonBubble() {
   )
 }
 
+function requestFeedRefreshOnce() {
+  const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`
+  return new Promise((resolve) => {
+    const timeoutId = setTimeout(() => {
+      window.removeEventListener('content:refresh:done', onDone)
+      resolve(false)
+    }, FEED_REFRESH_WAIT_MS)
+
+    const onDone = (event) => {
+      const detail = event?.detail || {}
+      if (detail.requestId !== requestId) return
+      clearTimeout(timeoutId)
+      window.removeEventListener('content:refresh:done', onDone)
+      resolve(Boolean(detail.ok && detail.count > 0))
+    }
+
+    window.addEventListener('content:refresh:done', onDone)
+    window.dispatchEvent(new CustomEvent('content:refresh', { detail: { requestId } }))
+  })
+}
+
 export function ChatWindow() {
-  const queryClient = useQueryClient()
   const { user, loading: authLoading } = useAuthState()
   const storedUserId = getStoredUserId()
 
@@ -134,7 +155,13 @@ export function ChatWindow() {
         ])
 
         try {
-          await queryClient.refetchQueries({ queryKey: ['content'] })
+          let gotContent = false
+          let attempts = 0
+          while (!gotContent && attempts < FEED_REFRESH_MAX_TRIES) {
+            attempts += 1
+            // Keep chat blocked and keep trying until feed gets fresh items.
+            gotContent = await requestFeedRefreshOnce()
+          }
         } finally {
           setMessages((prev) => prev.filter((m) => m.id !== feedMsgId))
           setIsUpdatingFeed(false)

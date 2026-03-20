@@ -33,7 +33,7 @@ function interleaveContent(items) {
   return result
 }
 
-const MAX_RETRIES = 3
+const MAX_RETRIES = 1
 
 export function ContentFeed() {
   const [activeItemId, setActiveItemId] = useState(null)
@@ -46,9 +46,10 @@ export function ContentFeed() {
   const userId = getStoredUserId()
   const limit = 40
 
-  async function loadContent(append) {
-    if (!userId || !user) return
-    if (!hasMore || errorCount >= MAX_RETRIES) return
+  async function loadContent(append, force = false) {
+    if (!userId || !user) return { ok: false, count: 0 }
+    if (append && !hasMore) return { ok: false, count: 0 }
+    if (!force && errorCount >= MAX_RETRIES) return { ok: false, count: 0 }
 
     const setFlag = append ? setIsFetchingMore : setIsLoading
     setFlag(true)
@@ -80,9 +81,11 @@ export function ContentFeed() {
 
       setErrorCount(0)
       if (batch.length === 0) setHasMore(false)
+      return { ok: true, count: batch.length }
     } catch (err) {
       setErrorCount((n) => n + 1)
       toast.error(err?.message || 'Failed to fetch content.', { duration: 4000 })
+      return { ok: false, count: 0 }
     } finally {
       setFlag(false)
     }
@@ -93,6 +96,26 @@ export function ContentFeed() {
     if (items.length > 0) return
     void loadContent(false)
   }, [isAuthLoading, userId, user])
+
+  useEffect(() => {
+    const handleRefreshFeed = async (event) => {
+      const requestId = event?.detail?.requestId || null
+      setHasMore(true)
+      setErrorCount(0)
+      const result = await loadContent(false, true)
+      window.dispatchEvent(
+        new CustomEvent('content:refresh:done', {
+          detail: {
+            requestId,
+            ok: Boolean(result?.ok),
+            count: Number(result?.count || 0),
+          },
+        }),
+      )
+    }
+    window.addEventListener('content:refresh', handleRefreshFeed)
+    return () => window.removeEventListener('content:refresh', handleRefreshFeed)
+  }, [userId, user])
 
   useEffect(() => {
     const handleScroll = () => {

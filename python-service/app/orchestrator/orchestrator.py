@@ -5,10 +5,11 @@ from typing import Any
 from app.models.chat import Query
 from app.models.content import ContentItem
 from app.redis import get_cached_queries, get_shown_urls, set_cached_queries
-from app.orchestrator import deduplicator, mixer, ranker, scrape_fetch
+from app.orchestrator import deduplicator, mixer, scrape_fetch
 from app.orchestrator.query_generator import generate_queries_ratio
 
 TARGET_ITEMS = 40
+DEFAULT_SCORE = 0.8
 
 
 # Main entry: returns ranked content after cache-or-scrape, dedupe, rank, filter, mix; raises with clear step on failure.
@@ -58,10 +59,10 @@ async def fetch_content(
     except Exception as e:
         raise RuntimeError(f"Content generation failed at dedupe: {e}") from e
 
-    # 4. Rank raw items via LLM, mix top-N by score; mixer already sorts descending so no MIN_SCORE filter needed.
+    # 4. Bypass ranking for now: assign a fixed default score, then mix top-N by ratio.
     try:
-        ranked = ranker.rank_raw_items(filtered_raw, initial_prompt or "", enhanced_profile or "", recent_chats)
-        mixed = mixer.mix_by_ratio(ranked, limit=limit)
+        scored = _assign_default_scores(filtered_raw, DEFAULT_SCORE)
+        mixed = mixer.mix_by_ratio(scored, limit=limit)
         final = mixed[:limit]
         by_type_final = {}
         for c in final:
@@ -101,6 +102,28 @@ def _combine_raw_results(raw_per_query: list[list[dict[str, Any]]]) -> list[dict
     out: list[dict[str, Any]] = []
     for batch in raw_per_query:
         out.extend(batch)
+    return out
+
+
+def _assign_default_scores(raw_items: list[dict[str, Any]], default_score: float) -> list[ContentItem]:
+    out: list[ContentItem] = []
+    for r in raw_items:
+        if not isinstance(r, dict):
+            continue
+        try:
+            out.append(
+                ContentItem(
+                    id=str(r.get("id", "")),
+                    type=str(r.get("type", "image")),
+                    platform=str(r.get("platform", "pinterest")),
+                    url=str(r.get("url", "")),
+                    title=str(r.get("title", "")),
+                    score=default_score,
+                    metadata=r.get("metadata"),
+                )
+            )
+        except Exception:
+            continue
     return out
 
 
