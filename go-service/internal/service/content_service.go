@@ -47,9 +47,14 @@ func (s *ContentService) GetContent(ctx context.Context, req models.ContentReque
 		return nil, fmt.Errorf("user repository is not configured")
 	}
 
+	userID, err := resolveInternalUserID(ctx, s.userRepo, req.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve user id: %w", err)
+	}
+
 	// Enforce daily per-user content quota (shared with chat).
 	if s.rateLimitRepo != nil {
-		key := fmt.Sprintf("rl:content:%s:%s", req.UserID, time.Now().UTC().Format("2006-01-02"))
+		key := fmt.Sprintf("rl:content:%s:%s", userID, time.Now().UTC().Format("2006-01-02"))
 		ok, _, err := s.rateLimitRepo.AllowDaily(ctx, key, 10)
 		if err != nil {
 			return nil, fmt.Errorf("content rate limit: %w", err)
@@ -59,7 +64,7 @@ func (s *ContentService) GetContent(ctx context.Context, req models.ContentReque
 		}
 	}
 
-	profile, err := s.userRepo.GetContentProfileByUserID(ctx, req.UserID)
+	profile, err := s.userRepo.GetContentProfileByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get user profile: %w", err)
 	}
@@ -73,7 +78,7 @@ func (s *ContentService) GetContent(ctx context.Context, req models.ContentReque
 	}
 
 	agentReq := agent.GenerateContentRequest{
-		UserID:          req.UserID,
+		UserID:          userID,
 		InitialPrompt:   profile.InitialPrompt,
 		EnhancedProfile: profile.EnhancedProfile,
 		Preferences:     profile.Preferences,
@@ -99,7 +104,7 @@ func (s *ContentService) GetContent(ctx context.Context, req models.ContentReque
 				urls = append(urls, it.URL)
 			}
 		}
-		_ = s.dedupRepo.MarkShownBatch(ctx, req.UserID, urls)
+		_ = s.dedupRepo.MarkShownBatch(ctx, userID, urls)
 	}
 
 	// Apply offset client-side (Python API supports limit only).

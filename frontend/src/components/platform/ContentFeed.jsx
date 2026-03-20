@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Masonry from 'react-responsive-masonry'
 import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { ContentCard } from './ContentCard'
 import { useContentFeed } from '../../hooks/useContentFeed'
 
@@ -31,30 +32,45 @@ function interleaveContent(items) {
 
 export function ContentFeed() {
   const [activeItemId, setActiveItemId] = useState(null)
+  const bottomSentinelRef = useRef(null)
   const {
     data,
     isLoading,
+    isError,
+    error,
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage,
   } = useContentFeed({ limit: 40 })
 
-  const content = data?.pages?.flatMap((page) => page?.items ?? []) ?? []
-  const mixedContent = interleaveContent(content)
+  // Interleave within each page so adding a new page doesn't reshuffle earlier items.
+  const mixedContent = (data?.pages ?? []).flatMap((page) =>
+    interleaveContent(page?.items ?? []),
+  )
 
   useEffect(() => {
-    const handleScroll = () => {
-      if (!hasNextPage || isFetchingNextPage) return
-
-      const scrolledToBottom =
-        window.innerHeight + window.scrollY >=
-        document.documentElement.scrollHeight - 1000
-
-      if (scrolledToBottom) fetchNextPage()
+    if (isError && error?.message) {
+      toast.error(error.message, { duration: 4000 })
     }
+  }, [isError, error?.message])
 
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+  useEffect(() => {
+    const el = bottomSentinelRef.current
+    if (!el) return
+    if (!('IntersectionObserver' in window)) return
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        if (!entry?.isIntersecting) return
+        if (!hasNextPage || isFetchingNextPage) return
+        fetchNextPage()
+      },
+      { root: null, threshold: 0.1 },
+    )
+
+    obs.observe(el)
+    return () => obs.disconnect()
   }, [fetchNextPage, hasNextPage, isFetchingNextPage])
 
   return (
@@ -69,6 +85,9 @@ export function ContentFeed() {
           />
         ))}
       </Masonry>
+
+      <div ref={bottomSentinelRef} className="h-2" />
+
       {(isLoading || isFetchingNextPage) && (
         <div className="flex justify-center items-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-[#0D9488]" />

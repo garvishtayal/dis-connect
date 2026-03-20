@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Heart, Share2, MoreHorizontal, Bookmark } from 'lucide-react'
+import { Share2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 function getYoutubeVideoId(url) {
   if (!url) return null
@@ -135,18 +136,30 @@ function PinterestEmbed({ url, title }) {
 }
 
 export function ContentCard({ item, activeItemId, onActivate }) {
-  const [isLiked, setIsLiked] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
-  const [isSaved, setIsSaved] = useState(false)
 
   const type = item?.type
   const isImage = type === 'image'
   const isShort = type === 'short' || type === 'reel'
   const isVideo = type === 'video'
 
-  const likes = Number(item?.metadata?.likes ?? item?.likes ?? 0) || 0
   const showHoverUI = isImage
   const isActiveVideo = (isShort || isVideo) && activeItemId === item?.id
+
+  async function copyImageUrl() {
+    const url = item?.url
+    if (!url) {
+      toast.error('No image URL to copy.')
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success('Image URL copied.', { duration: 2500 })
+    } catch {
+      toast.error('Copy failed. Please try again.', { duration: 2500 })
+    }
+  }
 
   return (
     <div className="group">
@@ -161,12 +174,19 @@ export function ContentCard({ item, activeItemId, onActivate }) {
           {isImage && (
             <>
               {isImageUrl(item?.url) ? (
-                <img
-                  src={item?.url}
-                  alt={item?.title || 'Pinterest image'}
-                  className="w-full h-auto object-cover"
-                  loading="lazy"
-                />
+                // Force a consistent portrait card height for direct image URLs.
+                // Without this, wide/short images create very small cards in Masonry.
+                <div
+                  className="relative w-full overflow-hidden"
+                  style={{ paddingTop: '120%' }}
+                >
+                  <img
+                    src={item?.url}
+                    alt={item?.title || 'Pinterest image'}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
               ) : (
                 <PinterestEmbed url={item?.url} title={item?.title} />
               )}
@@ -201,50 +221,15 @@ export function ContentCard({ item, activeItemId, onActivate }) {
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation()
-                  setIsSaved(!isSaved)
+                  void copyImageUrl()
                 }}
-                className={`w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center transition-all pointer-events-auto ${
-                  isSaved
-                    ? 'bg-gradient-to-br from-[#0D9488] to-[#14B8A6] text-white'
-                    : 'bg-white/95 text-gray-800 hover:bg-white'
-                }`}
-              >
-                <Bookmark className={`w-5 h-5 ${isSaved ? 'fill-white' : ''}`} />
-              </button>
-              <button
-                type="button"
                 className="w-10 h-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center hover:bg-white transition-all pointer-events-auto"
               >
                 <Share2 className="w-5 h-5 text-gray-800" />
               </button>
-              <button
-                type="button"
-                className="w-10 h-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center hover:bg-white transition-all pointer-events-auto"
-              >
-                <MoreHorizontal className="w-5 h-5 text-gray-800" />
-              </button>
             </div>
 
             <div className="absolute bottom-0 left-0 right-0 p-4">
-              <div className="flex items-center justify-between mb-2">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setIsLiked(!isLiked)
-                  }}
-                  className="flex items-center gap-2 hover:scale-105 transition-transform pointer-events-auto"
-                >
-                  <Heart
-                    className={`w-5 h-5 ${
-                      isLiked ? 'fill-red-500 text-red-500' : 'text-white'
-                    }`}
-                  />
-                  <span className="text-sm text-white font-medium">
-                    {isLiked ? likes + 1 : likes}
-                  </span>
-                </button>
-              </div>
               <h3 className="text-white font-semibold mb-1 line-clamp-2">
                 {item?.title}
               </h3>

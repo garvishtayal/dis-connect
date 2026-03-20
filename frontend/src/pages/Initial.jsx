@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Footer from '../components/layout/Footer'
-import { withAuthRequired } from '../hocs/withAuthRequired'
+import { withOnboardingPendingRequired } from '../hocs/withOnboardingPendingRequired'
 import { useCreateUser } from '../hooks/useCreateUser'
 import { saveSession, setOnboardingDone } from '../lib/session'
 
@@ -101,4 +101,4 @@ function InitialPage() {
   )
 }
 
-export default withAuthRequired(InitialPage)
+export default withOnboardingPendingRequired(InitialPage)

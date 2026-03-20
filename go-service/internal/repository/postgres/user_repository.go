@@ -89,6 +89,24 @@ WHERE firebase_uid = $1;
 	return completed, nil
 }
 
+// GetUserIDByFirebaseUID returns the internal user ID for a Firebase UID.
+// Returns empty string when not found.
+func (r *UserRepository) GetUserIDByFirebaseUID(ctx context.Context, firebaseUID string) (string, error) {
+	const query = `
+SELECT id
+FROM users
+WHERE firebase_uid = $1;
+`
+	var userID string
+	if err := r.db.DB.QueryRowContext(ctx, query, firebaseUID).Scan(&userID); err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
+		return "", err
+	}
+	return userID, nil
+}
+
 // SetInitialPromptByFirebaseUID stores initial prompt and enhanced profile and marks onboarding complete.
 func (r *UserRepository) SetInitialPromptByFirebaseUID(ctx context.Context, firebaseUID, initialPrompt, enhancedProfile string) (string, error) {
 	const query = `

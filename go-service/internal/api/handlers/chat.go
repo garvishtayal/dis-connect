@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 
@@ -34,7 +35,12 @@ func (h *ChatHandler) HandleChat(c *gin.Context) {
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": "daily chat limit reached"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to handle chat"})
+		// Include underlying error so the frontend can display a useful message.
+		// (This helps debug issues like user_id mismatches after logout/login.)
+		c.JSON(
+			http.StatusInternalServerError,
+			gin.H{"error": fmt.Sprintf("failed to handle chat: %v", err)},
+		)
 		return
 	}
 

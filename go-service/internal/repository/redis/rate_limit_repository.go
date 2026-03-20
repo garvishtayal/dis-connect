@@ -37,4 +37,3 @@ func (r *RateLimitRepository) AllowDaily(ctx context.Context, key string, limit 
 	}
 	return int(n) <= limit, int(n), nil
 }
-

@@ -1,5 +1,4 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { toast } from 'sonner'
 import { fetchContent } from '../api/content'
 import { getStoredUserId } from '../lib/session'
 import { useAuthState } from './useAuthState'
@@ -13,20 +12,17 @@ export function useContentFeed({ limit = 20 } = {}) {
     enabled: Boolean(userId && user && !loading),
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
-      return fetchContent({ userId, limit, offset: pageParam })
+      try {
+        return await fetchContent({ userId, limit, offset: pageParam })
+      } catch (err) {
+        const msg = err?.message || 'Failed to fetch content.'
+        throw new Error(msg)
+      }
     },
     getNextPageParam: (lastPage, pages) => {
       const items = lastPage?.items ?? []
       if (items.length < limit) return undefined
       return pages.length * limit
-    },
-    onError: (err) => {
-      const msg = err?.message || 'Failed to fetch content.'
-      if (msg.toLowerCase().includes('limit')) {
-        toast.error('Daily content limit reached. Try again tomorrow.')
-      } else {
-        toast.error(msg)
-      }
     },
   })
 }
