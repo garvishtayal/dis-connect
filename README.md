@@ -1,5 +1,7 @@
 # dis-connect
 
+**Live:** [dis-connect.app](https://dis-connect.app)
+
 **AI-assisted discovery** — personalized content from multiple sources, shaped by how you chat and what you save.
 
 Sign in with Google (Firebase), explore a masonry feed, and refine results through conversation. A Go API orchestrates auth, users, preferences, and chat; a Python service handles ranking, LLM calls, and scraping. PostgreSQL and Redis sit underneath.
@@ -24,7 +26,7 @@ Sign in with Google (Firebase), explore a masonry feed, and refine results throu
 dis-connect/
 ├── frontend/          # SPA (Vite)
 ├── go-service/        # HTTP API
-├── python-service/    # Agent & ranking
+├── python-service/   # Agent & ranking
 ├── architecture/      # Diagrams & schema notes (Mermaid, SQL)
 ├── product-notes/     # Design notes
 ├── docker-compose.yml           # Pre-built images from Docker Hub
@@ -83,6 +85,7 @@ Compose reads `.env` for build args and runtime. For development **without** Doc
 
 ## Production notes
 
+- Point DNS and your reverse proxy at **https://dis-connect.app** (or your host); static SEO in `frontend/index.html` and `public/sitemap.xml` use that canonical URL — update those files if the public domain changes.
 - Replace default Postgres credentials in Compose (or use `docker-compose.override.yml`) for real deployments.
 - Keep `.env` and `firebase-service-account.json` out of version control and restrict file permissions.
 

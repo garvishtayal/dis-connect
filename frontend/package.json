@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build:favicon": "node scripts/build-favicon.mjs && node scripts/rasterize-apple-touch.mjs",
+    "build": "node scripts/build-favicon.mjs && node scripts/rasterize-apple-touch.mjs && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "sonner": "^2.0.0"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/vite": "^4.1.0",
     "@vitejs/plugin-react": "^4.3.0",
     "tailwindcss": "^4.1.0",
