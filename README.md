@@ -14,30 +14,40 @@ dis-connect/
 └── product-notes/   # Design notes and sketches
 ```
 
-Create **one** **`.env` at the repo root** from **`.env.example`**, fill in secrets, then:
+Create **one** **`.env` at the repo root** from **`.env.example`**, fill in secrets.
+
+### Docker Hub (default `docker-compose.yml`)
+
+Images: **`${DOCKERHUB_USERNAME}/dis-connect-frontend:latest`**, **`dis-connect-go:latest`**, **`dis-connect-python:latest`**. Set **`DOCKERHUB_USERNAME`** in `.env`, then:
 
 ```bash
-docker compose up --build
+docker compose pull
+docker compose up -d
 ```
 
-Compose **automatically** reads **`.env`** next to `docker-compose.yml`: it supplies **`${VITE_*}`** for the **frontend build** and **`env_file`** for **go-service** and **python-service**. No `--env-file` flag needed.
+App ports bind to **loopback only** (`127.0.0.1:3000`, `:8080`, `:8000`, `:5433`, `:6380`) — put a reverse proxy on the host for public HTTPS. **`VITE_*`** is baked into the frontend image when you **build and push**; update image tags after config changes.
 
-For **local dev without Docker**, you can still use per-app files (`frontend/.env`, `go-service/.env`, `python-service/.env` from each `.env.example`).
+### Build from source (local dev)
 
-Postgres and Redis are published on host **`5433`** and **`6380`** so they don’t conflict with a local Postgres/Redis on 5432/6379. Apps in Compose still talk to **`postgres:5432`** and **`redis:6379`** on the internal network.
+```bash
+docker compose -f docker-compose.build.yml up --build
+```
+
+Compose reads **`.env`** for **`env_file`** and **`${VITE_*}`** build args on the frontend service.
+
+For **local dev without Docker**, you can still use per-app `.env` files under each service.
 
 ### Docker Compose and `.env` files
 
 | Service | Config | Purpose |
 |--------|--------|--------|
-| **All** | **`.env`** (repo root) | Single file: **`VITE_*`**, Go, and Python variables. Compose **`environment`** overrides DB/Redis/agent/Firebase paths for Docker. |
-| **frontend** | Build args from root `.env` | Static bundle; not copied into image (`frontend/.dockerignore`). |
+| **Hub deploy** | **`.env`** | **`DOCKERHUB_USERNAME`**, Go/Python secrets; **`env_file`** for go + python. |
+| **Build compose** | **`.env`** | **`VITE_*`**, Go, Python; Compose **`environment`** overrides DB/Redis/agent/Firebase for Docker. |
 
-On a VM:
+On a VM (Hub):
 
-1. Clone the repo (e.g. `/opt/dis-connect`).
-2. `cp .env.example .env` and fill in keys; `chmod 600 .env`
-3. `docker compose up -d --build`
+1. Clone the repo, add **`go-service/secret/firebase-service-account.json`**, `cp .env.example .env`, set **`DOCKERHUB_USERNAME`** and API keys, `chmod 600 .env`
+2. `docker compose pull && docker compose up -d`
 
 **Go + Firebase:** put your Firebase Admin **service account JSON** at **`go-service/secret/firebase-service-account.json`** (download from Firebase Console → Project settings → Service accounts). Compose mounts `./go-service/secret` into the container at `/app/secret` read-only. Do not commit this file (it is gitignored).
 
