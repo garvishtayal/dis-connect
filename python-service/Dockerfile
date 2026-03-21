@@ -1,5 +1,11 @@
 FROM python:3.12-slim
 
+# pinscrape → opencv (cv2) needs libGL at import time; slim image has no GL stack
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1

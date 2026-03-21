@@ -1,4 +1,4 @@
-"""YouTube scraper: one query → 10 shorts + 5 videos via YouTube Data API v3; 3 API keys fallback."""
+"""YouTube scraper: one query → 10 shorts + 5 videos via YouTube Data API v3; multi-key fallback (YOUTUBE_API_KEY_1, _2, ...)."""
 import asyncio
 import os
 from typing import Any
@@ -13,9 +13,16 @@ VIDEOS_PER_QUERY = 5
 
 
 def _get_api_keys() -> list[str]:
-    # Load up to 3 YouTube API keys from env.
-    keys = [os.getenv("YOUTUBE_API_KEY_1"), os.getenv("YOUTUBE_API_KEY_2"), os.getenv("YOUTUBE_API_KEY_3")]
-    return [k for k in keys if k]
+    # YOUTUBE_API_KEY_1, _2, _3, ... until the next env var is missing or empty.
+    keys: list[str] = []
+    i = 1
+    while True:
+        key = os.getenv(f"YOUTUBE_API_KEY_{i}")
+        if not key:
+            break
+        keys.append(key)
+        i += 1
+    return keys
 
 
 def _api_search_one(query: str, content_type: str, max_results: int, api_key: str) -> list[dict[str, Any]]:

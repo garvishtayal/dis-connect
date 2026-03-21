@@ -13,10 +13,12 @@ type Client struct {
 
 // NewClient creates a PostgreSQL client from app config.
 func NewClient(cfg *config.AppConfig) (*Client, error) {
+	if err := upMigrations(cfg.DatabaseURL); err != nil {
+		return nil, err
+	}
 	db, err := config.NewPostgresDB(cfg)
 	if err != nil {
 		return nil, err
 	}
 	return &Client{DB: db}, nil
 }
-

@@ -1,15 +1,20 @@
-version: "3.9"
-
 services:
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-}
+        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-}
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-}
+        VITE_FIREBASE_STORAGE_BUCKET: ${VITE_FIREBASE_STORAGE_BUCKET:-}
+        VITE_FIREBASE_MESSAGING_SENDER_ID: ${VITE_FIREBASE_MESSAGING_SENDER_ID:-}
+        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID:-}
     container_name: dis-connect-frontend
     ports:
       - "3000:80"
     depends_on:
       - go-service
-    environment:
-      - VITE_API_BASE_URL=http://go-service:8080
 
   go-service:
     build: ./go-service
@@ -20,19 +25,29 @@ services:
       - postgres
       - redis
       - python-service
+    env_file:
+      - .env
     environment:
       - PORT=8080
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/dis_connect?sslmode=disable
       - REDIS_ADDR=redis:6379
       - AGENT_BASE_URL=http://python-service:8000
+      # Path inside container (matches WORKDIR /app); host file: go-service/secret/firebase-service-account.json
+      - FIREBASE_CREDENTIALS_PATH=/app/secret/firebase-service-account.json
+    volumes:
+      - ./go-service/secret:/app/secret:ro
 
   python-service:
     build: ./python-service
     container_name: dis-connect-python-service
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       - PORT=8000
+      # Use Compose service name; overrides REDIS_URL=localhost from dev .env
+      - REDIS_URL=redis://redis:6379
 
   postgres:
     image: postgres:16-alpine
@@ -42,7 +57,8 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     ports:
-      - "5432:5432"
+      # Host ports avoid clash with local Postgres/Redis; services still use postgres:5432 / redis:6379 inside the network
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -50,7 +66,7 @@ services:
     image: redis:7-alpine
     container_name: dis-connect-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
 
 volumes:
   postgres_data:

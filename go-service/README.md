@@ -208,15 +208,12 @@ Same database can be used for users, chat, and content metadata; Redis is availa
    Copy `.env.example` to `.env` and set at least:
 
    - `FIREBASE_CREDENTIALS_PATH` — path to your Firebase service account JSON.
-   - `DATABASE_URL` — Postgres connection string (run migrations first).
+   - `DATABASE_URL` — Postgres connection string.
    - Optionally `REDIS_ADDR`, `AGENT_BASE_URL`, `PORT`.
 
 2. **Database**
 
-   Run Postgres migrations (e.g. with your migration tool or `psql`) in order:
-
-   - `internal/repository/postgres/migrations/000001_init_schema.up.sql`
-   - `internal/repository/postgres/migrations/000002_add_onboarding_completed_to_users.up.sql`
+   SQL migrations under `internal/repository/postgres/migrations/` run **automatically** on API startup (`golang-migrate`, embedded in the binary). No manual `psql` step is required.
 
 3. **Run the server**
 

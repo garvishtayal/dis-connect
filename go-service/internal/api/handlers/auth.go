@@ -31,7 +31,7 @@ func (h *AuthHandler) SignInWithGoogle(c *gin.Context) {
 
 	resp, err := h.authService.SignInWithGoogle(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication failed"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -56,4 +56,3 @@ func (h *AuthHandler) SignInWithApple(c *gin.Context) {
 
 	c.JSON(http.StatusOK, resp)
 }
-

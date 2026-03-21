@@ -21,7 +21,7 @@ def filter_already_shown_raw(raw: list[dict[str, Any]], shown_urls: set[str]) ->
 
 
 # Keeps all fresh items and allows old/shown items up to old_ratio per type.
-# With old_ratio=0.5, old items are capped at the same count as fresh (50/50 max).
+# With old_ratio=0.4, old items are capped at the same count as fresh (40/60 max).
 def allow_partial_old_raw(
     raw: list[dict[str, Any]],
     shown_urls: set[str],
