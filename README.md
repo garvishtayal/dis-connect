@@ -1,55 +1,94 @@
-## dis-connect
+# dis-connect
 
-AI-powered personalized content discovery app with chat-driven preferences and multi-source search.
+**AI-assisted discovery** — personalized content from multiple sources, shaped by how you chat and what you save.
 
-### Folder structure
+Sign in with Google (Firebase), explore a masonry feed, and refine results through conversation. A Go API orchestrates auth, users, preferences, and chat; a Python service handles ranking, LLM calls, and scraping. PostgreSQL and Redis sit underneath.
 
-```bash
+---
+
+## Stack
+
+| Layer | Technology |
+|--------|------------|
+| Web app | React 18, Vite 6, Tailwind CSS 4, TanStack Query, React Router |
+| API | Go (Gin) — auth, content, chat, user state |
+| Agent | Python — orchestration, ranking, LiteLLM (Groq / Gemini), scrapers |
+| Data | PostgreSQL 16, Redis 7 |
+| Identity | Firebase Authentication |
+
+---
+
+## Repository layout
+
+```text
 dis-connect/
-├── frontend/        # React + CopilotKit UI
-├── go-service/      # Go API (search + orchestration)
-├── python-service/  # Python agent service (ranking + scraping support)
-├── architecture/    # Architecture & schema diagrams (Mermaid + SQL)
-├── docker-compose.yml
-└── product-notes/   # Design notes and sketches
+├── frontend/          # SPA (Vite)
+├── go-service/        # HTTP API
+├── python-service/    # Agent & ranking
+├── architecture/      # Diagrams & schema notes (Mermaid, SQL)
+├── product-notes/     # Design notes
+├── docker-compose.yml           # Pre-built images from Docker Hub
+└── docker-compose.build.yml     # Build all services locally
 ```
 
-Create **one** **`.env` at the repo root** from **`.env.example`**, fill in secrets.
+Service-specific details: `go-service/README.md`, `python-service/README.md`.
 
-### Docker Hub (default `docker-compose.yml`)
+---
 
-Images: **`${DOCKERHUB_USERNAME}/dis-connect-frontend:latest`**, **`dis-connect-go:latest`**, **`dis-connect-python:latest`**. Set **`DOCKERHUB_USERNAME`** in `.env`, then:
+## Prerequisites
+
+- **Docker** and **Docker Compose** (recommended)
+- For Hub deploy: a Docker Hub username and images tagged `youruser/dis-connect-{frontend,go,python}:latest`
+- **Firebase**: client config for the frontend; Admin **service account JSON** for the Go API at `go-service/secret/firebase-service-account.json` (gitignored — do not commit)
+
+---
+
+## Configuration
+
+1. Copy the example env and edit secrets:
+
+   ```bash
+   cp .env.example .env
+   chmod 600 .env
+   ```
+
+2. Place Firebase Admin credentials at `go-service/secret/firebase-service-account.json`.
+
+3. Set `DOCKERHUB_USERNAME` in `.env` when using `docker-compose.yml` with pulled images.
+
+`VITE_*` variables are **baked into the frontend image at build time**. After changing them, rebuild and push the frontend image (or use `docker-compose.build.yml` locally).
+
+---
+
+## Run with pre-built images (Docker Hub)
+
+Default compose binds services to **loopback only** (`127.0.0.1`): app **3000**, Go **8080**, Python **8000**, Postgres **5433**, Redis **6380**. Put a reverse proxy on the host for public HTTPS.
 
 ```bash
 docker compose pull
 docker compose up -d
 ```
 
-App ports bind to **loopback only** (`127.0.0.1:3000`, `:8080`, `:8000`, `:5433`, `:6380`) — put a reverse proxy on the host for public HTTPS. **`VITE_*`** is baked into the frontend image when you **build and push**; update image tags after config changes.
+---
 
-### Build from source (local dev)
+## Build from source (local dev)
 
 ```bash
 docker compose -f docker-compose.build.yml up --build
 ```
 
-Compose reads **`.env`** for **`env_file`** and **`${VITE_*}`** build args on the frontend service.
+Compose reads `.env` for build args and runtime. For development **without** Docker, use per-service `.env` files as documented in each service README.
 
-For **local dev without Docker**, you can still use per-app `.env` files under each service.
+---
 
-### Docker Compose and `.env` files
+## Production notes
 
-| Service | Config | Purpose |
-|--------|--------|--------|
-| **Hub deploy** | **`.env`** | **`DOCKERHUB_USERNAME`**, Go/Python secrets; **`env_file`** for go + python. |
-| **Build compose** | **`.env`** | **`VITE_*`**, Go, Python; Compose **`environment`** overrides DB/Redis/agent/Firebase for Docker. |
+- Replace default Postgres credentials in Compose (or use `docker-compose.override.yml`) for real deployments.
+- Keep `.env` and `firebase-service-account.json` out of version control and restrict file permissions.
 
-On a VM (Hub):
+---
 
-1. Clone the repo, add **`go-service/secret/firebase-service-account.json`**, `cp .env.example .env`, set **`DOCKERHUB_USERNAME`** and API keys, `chmod 600 .env`
-2. `docker compose pull && docker compose up -d`
+## Documentation
 
-**Go + Firebase:** put your Firebase Admin **service account JSON** at **`go-service/secret/firebase-service-account.json`** (download from Firebase Console → Project settings → Service accounts). Compose mounts `./go-service/secret` into the container at `/app/secret` read-only. Do not commit this file (it is gitignored).
-
-For production Postgres, replace dev defaults in Compose (or use `docker-compose.override.yml`) with strong passwords and matching `DATABASE_URL`.
-
+- [High-level architecture](architecture/01-high-level-architecture.md) — request flow and components
+- [Database schema](architecture/05-database-schema.md) — tables and relationships
