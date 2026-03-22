@@ -3,9 +3,11 @@ import { Toaster } from 'sonner'
 import Login from './pages/Login'
 import Initial from './pages/Initial'
 import Platform from './pages/Platform'
+import MobileBlock from './components/layout/MobileBlock'
 
 export default function App() {
   return (
+    <MobileBlock>
     <BrowserRouter>
       <Toaster
         position="top-center"
@@ -23,5 +25,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
+    </MobileBlock>
   )
 }

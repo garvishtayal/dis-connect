@@ -617,12 +617,6 @@ if (hasObstacles && this.horizon.obstacles[0] && !this.tRex.jumping) {
     * @param {SoundBuffer} soundBuffer
     */
     playSound: function(soundBuffer) {
-    if (soundBuffer) {
-    var sourceNode = this.audioContext.createBufferSource();
-    sourceNode.buffer = soundBuffer;
-    sourceNode.connect(this.audioContext.destination);
-    sourceNode.start(0);
-    }
     }
     };
     /**

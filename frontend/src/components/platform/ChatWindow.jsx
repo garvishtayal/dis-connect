@@ -9,7 +9,7 @@ const INTRO_DISPLAY =
 
 // Prompt sent to backend on behalf of the user (we display a nicer message immediately).
 const INTRO_PROMPT = 'hi give intro msg..'
-const FEED_REFRESH_MAX_TRIES = 6
+const FEED_REFRESH_MAX_TRIES = 1
 const FEED_REFRESH_WAIT_MS = 25000
 
 function SkeletonBubble() {

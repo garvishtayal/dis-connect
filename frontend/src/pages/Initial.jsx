@@ -5,7 +5,15 @@ import { withOnboardingPendingRequired } from '../hocs/withOnboardingPendingRequ
 import { useCreateUser } from '../hooks/useCreateUser'
 import { saveSession, setOnboardingDone } from '../lib/session'
 
-const PROMPT_TO_COPY = `Describe yourself in a short paragraph: what you care about, how you think, your values, and what kind of content or conversations you enjoy. This will help personalize your experience.`
+const PROMPT_TO_COPY = `I'm building a personalized content feed for someone and need a short profile to tailor it. Please answer these questions about me in a concise paragraph (4–6 sentences max):
+
+1. What's my name?
+2. What are my main goals right now — personally or professionally?
+3. What do I genuinely care about or find meaningful?
+4. What kind of person do I want to become?
+5. What topics, hobbies, or areas do I enjoy consuming content about?
+
+Write it in third person, as if describing me to someone who's curating content for me. Be specific, not generic.`
 
 function InitialPage() {
   const navigate = useNavigate()
