@@ -53,8 +53,8 @@ export function ChatWindow() {
     {
       id: 'intro-advisor',
       role: 'advisor',
-      content: INTRO_DISPLAY,
-      isSkeleton: false,
+      content: '',
+      isSkeleton: true,
     },
   ])
   const [input, setInput] = useState('')
@@ -96,13 +96,19 @@ export function ChatWindow() {
     if (didBootstrapIntro.current) return
     didBootstrapIntro.current = true
 
-    // We already show a friendly intro. Now ask backend for the actual tailored intro.
     chatMutation.mutate(INTRO_PROMPT, {
       onSuccess: (data) => {
         const nextText = data?.chat_response || INTRO_DISPLAY
         setMessages((prev) =>
           prev.map((m) =>
             m.id === 'intro-advisor' ? { ...m, content: nextText, isSkeleton: false } : m,
+          ),
+        )
+      },
+      onError: () => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === 'intro-advisor' ? { ...m, content: INTRO_DISPLAY, isSkeleton: false } : m,
           ),
         )
       },
