@@ -133,7 +133,7 @@ jobs:
           username: ${{ secrets.VM_USER }}
           key:      ${{ secrets.VM_SSH_KEY }}
           script: |
-            cd ~/dis-connect
+            cd ~/apps/dis-connect
             docker compose pull
             docker compose up -d --remove-orphans
             docker image prune -f
