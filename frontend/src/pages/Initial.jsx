@@ -90,7 +90,7 @@ function InitialPage() {
               id="paste-response"
               value={pastedResponse}
               onChange={(e) => setPastedResponse(e.target.value)}
-              placeholder="Paste the response from your LLM…"
+              placeholder="Paste the response from your LLM… or just tell us in your own words — what do you want to become? What kind of life are you building? Write simple 3–4 lines and we'll help you get there."
               className="flex-1 min-h-[140px] w-full rounded-xl bg-white border border-zinc-200 p-4 text-zinc-700 text-sm leading-relaxed placeholder:text-zinc-400 resize-none focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-300/50 transition-colors"
               disabled={isPending}
             />
