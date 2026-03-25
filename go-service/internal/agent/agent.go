@@ -15,6 +15,7 @@ import (
 
 const (
 	pathUnderstandSoul  = "/agent/understand-soul"
+	pathGenerateQueries = "/agent/generate-queries"
 	pathGenerateContent = "/agent/generate-content"
 	pathChat            = "/agent/chat"
 	pathPreferences     = "/agent/prefrences"
@@ -39,6 +40,23 @@ type UnderstandSoulRequest struct {
 type UnderstandSoulResponse struct {
 	UserID string `json:"user_id"`
 	Soul   string `json:"soul"`
+}
+
+// GenerateQueriesRequest is the /agent/generate-queries request payload.
+// Python returns a list of PlatformQuery; no scraping is performed.
+type GenerateQueriesRequest struct {
+	UserID          string         `json:"user_id"`
+	InitialPrompt   string         `json:"initial_prompt"`
+	EnhancedProfile string         `json:"enhanced_profile"`
+	Preferences     map[string]any `json:"preferences"`
+	RecentChats     []any          `json:"recent_chats"`
+}
+
+// PlatformQuery is one LLM-generated search query for a specific platform.
+type PlatformQuery struct {
+	Platform    string `json:"platform"`
+	Query       string `json:"query"`
+	ContentType string `json:"content_type"`
 }
 
 // GenerateContentRequest is the /agent/generate-content request payload.
@@ -103,6 +121,16 @@ func NewClient(baseURL string) *Client {
 			Timeout: defaultAgentTimeout,
 		},
 	}
+}
+
+// GenerateQueries calls /agent/generate-queries and returns LLM-generated platform queries.
+// Scraping is NOT performed by Python — Go workers execute each query via the queue.
+func (c *Client) GenerateQueries(ctx context.Context, req GenerateQueriesRequest) ([]PlatformQuery, error) {
+	var resp []PlatformQuery
+	if err := c.postJSON(ctx, pathGenerateQueries, req, &resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 // UnderstandSoul calls /agent/understand-soul.

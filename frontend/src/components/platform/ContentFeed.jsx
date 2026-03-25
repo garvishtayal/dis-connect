@@ -44,7 +44,7 @@ export function ContentFeed() {
   const [errorCount, setErrorCount] = useState(0)
   const { user, loading: isAuthLoading } = useAuthState()
   const userId = getStoredUserId()
-  const limit = 40
+  const limit = 100
 
   async function loadContent(append, force = false) {
     if (!userId || !user) return { ok: false, count: 0 }

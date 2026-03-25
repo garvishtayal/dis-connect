@@ -60,3 +60,16 @@ func (r *DedupRepository) WasShown(ctx context.Context, userID, url string) (boo
 	return res, nil
 }
 
+// GetShownURLs returns the full set of URLs already shown to a user (for mixer dedup).
+func (r *DedupRepository) GetShownURLs(ctx context.Context, userID string) (map[string]struct{}, error) {
+	members, err := r.client.Client.SMembers(ctx, shownKey(userID)).Result()
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]struct{}, len(members))
+	for _, m := range members {
+		out[m] = struct{}{}
+	}
+	return out, nil
+}
+

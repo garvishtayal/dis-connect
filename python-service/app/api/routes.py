@@ -6,10 +6,10 @@ from app.models.chat import (
     GenerateContentRequest,
     PreferencesRequest,
     PreferencesResponse,
+    Query,
     UnderstandSoulRequest,
     UnderstandSoulResponse,
 )
-from app.models.content import ContentItem, GenerateContentResponse
 from app.services import agent_service
 
 router = APIRouter()
@@ -27,11 +27,10 @@ async def understand_soul(req: UnderstandSoulRequest) -> UnderstandSoulResponse:
     return agent_service.understand_soul(req)
 
 
-# Generate content items (query + scrape + mix + rank, return items).
-@router.post("/agent/generate-content", response_model=GenerateContentResponse)
-async def generate_content(req: GenerateContentRequest) -> GenerateContentResponse:
-    items = await agent_service.generate_content(req)
-    return GenerateContentResponse(items=items)
+# Generate LLM search queries — Go workers execute the scraping.
+@router.post("/agent/generate-queries", response_model=list[Query])
+def generate_queries(req: GenerateContentRequest) -> list[Query]:
+    return agent_service.generate_queries(req)
 
 
 # Chat: LLM reply and needs_new_content flag.

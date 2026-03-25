@@ -1,4 +1,4 @@
-"""YouTube scraper: one query → 10 shorts + 5 videos via YouTube Data API v3; multi-key fallback (YOUTUBE_API_KEY_1, _2, ...)."""
+"""YouTube scraper: one query → 50 shorts + 30 videos via YouTube Data API v3; multi-key fallback (YOUTUBE_API_KEY_1, _2, ...)."""
 import asyncio
 import os
 from typing import Any
@@ -8,8 +8,8 @@ import requests
 from app.scrapers.models import YtRawItem
 
 SEARCH_URL = "https://www.googleapis.com/youtube/v3/search"
-SHORTS_PER_QUERY = 10
-VIDEOS_PER_QUERY = 5
+SHORTS_PER_QUERY = 50
+VIDEOS_PER_QUERY = 30
 
 
 def _get_api_keys() -> list[str]:
@@ -45,14 +45,14 @@ def _api_search_one(query: str, content_type: str, max_results: int, api_key: st
 
 
 def _search_sync(query: str, api_key: str) -> list[dict[str, Any]]:
-    # Run shorts (10) + videos (5) for one query; combine.
+    # Run shorts (50) + videos (30) for one query; combine.
     shorts = _api_search_one(query, "short", SHORTS_PER_QUERY, api_key)
     videos = _api_search_one(query, "video", VIDEOS_PER_QUERY, api_key)
     return shorts + videos
 
 
 async def search(query: str) -> list[dict[str, Any]]:
-    # One query → 10 shorts + 5 videos; try keys in order until one works.
+    # One query → 50 shorts + 30 videos; try keys in order until one works.
     keys = _get_api_keys()
     for key in keys:
         try:

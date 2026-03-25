@@ -8,7 +8,7 @@ RUN npm install
 
 # Build args from docker-compose (use: docker compose --env-file frontend/.env build)
 COPY . .
-ARG VITE_API_URL=http://localhost:8080
+ARG VITE_API_URL=/api
 ENV VITE_API_URL=$VITE_API_URL
 ARG VITE_FIREBASE_API_KEY
 ENV VITE_FIREBASE_API_KEY=$VITE_FIREBASE_API_KEY

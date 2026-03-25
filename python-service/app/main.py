@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.api.routes import router as api_router
+from app.api.scraper_routes import router as scraper_router
 from app.llm.client import LLMError
 
 
@@ -28,6 +29,7 @@ async def on_exception(_: Request, exc: Exception) -> JSONResponse:
 def create_app() -> FastAPI:
     app = FastAPI(title="dis-connect Python Agent")
     app.include_router(api_router)
+    app.include_router(scraper_router)
     app.add_exception_handler(LLMError, on_llm_error)
     app.add_exception_handler(ValueError, on_value_error)
     app.add_exception_handler(RuntimeError, on_runtime_error)

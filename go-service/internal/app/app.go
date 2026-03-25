@@ -9,15 +9,19 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
+	"github.com/garvishtayal/dis-connect/go-service/internal/content/aggregator"
 	"github.com/garvishtayal/dis-connect/go-service/internal/api"
 	"github.com/garvishtayal/dis-connect/go-service/internal/api/handlers"
 	"github.com/garvishtayal/dis-connect/go-service/internal/api/middleware"
 	agentclient "github.com/garvishtayal/dis-connect/go-service/internal/agent"
 	"github.com/garvishtayal/dis-connect/go-service/internal/auth"
 	"github.com/garvishtayal/dis-connect/go-service/internal/config"
+	"github.com/garvishtayal/dis-connect/go-service/internal/content/queue"
 	"github.com/garvishtayal/dis-connect/go-service/internal/repository/postgres"
 	redisrepo "github.com/garvishtayal/dis-connect/go-service/internal/repository/redis"
+	"github.com/garvishtayal/dis-connect/go-service/internal/content/scraper"
 	"github.com/garvishtayal/dis-connect/go-service/internal/service"
+	"github.com/garvishtayal/dis-connect/go-service/internal/content/worker"
 )
 
 var loadEnvOnce sync.Once
@@ -48,31 +52,47 @@ func BuildRouter() (*gin.Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Postgres repositories.
 	userRepo := postgres.NewUserRepository(pgClient)
 	chatRepo := postgres.NewChatRepository(pgClient)
 	preferenceRepo := postgres.NewPreferenceRepository(pgClient)
 	upgradeRepo := postgres.NewUpgradeRepository(pgClient)
+
+	// Redis repositories.
 	redisClient := redisrepo.NewClient(cfg)
 	dedupRepo := redisrepo.NewDedupRepository(redisClient)
 	rateLimitRepo := redisrepo.NewRateLimitRepository(redisClient)
+	stateRepo := redisrepo.NewRequestStateRepository(redisClient)
+	cacheRepo := redisrepo.NewSearchCacheRepository(redisClient)
 
+	// Queue + scraper client (both talk to the Python service).
+	q := queue.NewRedisQueue(redisClient.Client)
+	scraperClient := scraper.NewClient(cfg.AgentBaseURL)
+	agg := aggregator.New(stateRepo)
+
+	// Start background worker pools (run for the lifetime of the process).
+	workerCtx := context.Background()
+	worker.StartYouTubePool(workerCtx, q, scraperClient, stateRepo, cacheRepo)
+	worker.StartPinterestPool(workerCtx, q, scraperClient, stateRepo, cacheRepo, cfg.PinterestProxyURL)
+
+	// Gin engine + global middleware.
 	router := gin.New()
-
-	// Attach global HTTP middleware.
 	router.Use(middleware.Logger())
 	router.Use(middleware.CORS())
 
-	// Build service layer dependencies.
+	// Service layer.
 	agentSvc := agentclient.NewClient(cfg.AgentBaseURL)
 	authSvc := service.NewAuthService(tokenValidator, userRepo)
 	userSvc := service.NewUserService(userRepo, agentSvc)
-	contentSvc := service.NewContentService(agentSvc, userRepo, dedupRepo, rateLimitRepo)
+	contentSvc := service.NewContentService(agentSvc, userRepo, dedupRepo, rateLimitRepo, q, cacheRepo, stateRepo, agg)
 	chatSvc := service.NewChatService(agentSvc, contentSvc, userRepo, chatRepo, preferenceRepo, rateLimitRepo)
 	upgradeSvc := service.NewUpgradeService(upgradeRepo, userRepo)
+
 	firebaseAuth := middleware.FirebaseAuth(tokenValidator)
 	onboardingRequired := middleware.OnboardingRequired(userRepo)
 
-	// Bind handlers to services.
+	// Handlers.
 	authHandler := handlers.NewAuthHandler(authSvc)
 	userHandler := handlers.NewUserHandler(userSvc)
 	chatHandler := handlers.NewChatHandler(chatSvc)
@@ -80,7 +100,7 @@ func BuildRouter() (*gin.Engine, error) {
 	upgradeHandler := handlers.NewUpgradeHandler(upgradeSvc)
 	healthHandler := handlers.NewHealthHandler()
 
-	// Register all API routes.
+	// Routes.
 	apiRouter := api.NewRouter(
 		authHandler,
 		userHandler,

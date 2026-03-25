@@ -15,11 +15,11 @@ from app.models.chat import (
     GenerateContentRequest,
     PreferencesRequest,
     PreferencesResponse,
+    Query,
     UnderstandSoulRequest,
     UnderstandSoulResponse,
 )
-from app.models.content import ContentItem
-from app.orchestrator.orchestrator import fetch_content as orchestrator_fetch_content
+from app.llm.query_generator import generate_queries_ratio
 
 _llm_client = LLMClient()
 
@@ -31,16 +31,13 @@ def understand_soul(req: UnderstandSoulRequest) -> UnderstandSoulResponse:
     return UnderstandSoulResponse(user_id=req.user_id, soul=soul)
 
 
-# Handles /agent/generate-content: full flow (queries from initial_prompt + enhanced_profile + preferences + recent_chats).
-async def generate_content(req: GenerateContentRequest) -> list[ContentItem]:
-    limit = max(0, min(req.limit, 100))
-    return await orchestrator_fetch_content(
-        user_id=req.user_id,
-        initial_prompt=req.initial_prompt or "",
-        enhanced_profile=req.enhanced_profile or "",
-        preferences=req.preferences,
-        recent_chats=req.recent_chats,
-        limit=limit,
+# Handles /agent/generate-queries: LLM generates platform search queries for Go workers to execute.
+def generate_queries(req: GenerateContentRequest) -> list[Query]:
+    return generate_queries_ratio(
+        req.initial_prompt or "",
+        req.enhanced_profile or "",
+        req.preferences,
+        req.recent_chats,
     )
 
 

@@ -3,7 +3,7 @@ import { fetchContent } from '../api/content'
 import { getStoredUserId } from '../lib/session'
 import { useAuthState } from './useAuthState'
 
-export function useContentFeed({ limit = 20 } = {}) {
+export function useContentFeed({ limit = 100 } = {}) {
   const userId = getStoredUserId()
   const { user, loading } = useAuthState()
 

@@ -13,7 +13,7 @@ dis-connect is a personalised content platform. It curates a visual feed of imag
 You are a wise, warm mentor — the cool uncle everyone wishes they had. Think Ratan Tata's calm and grace, Amitabh Bachchan's warmth and wit, a man who has lived through enough to know what actually matters.
 
 WHO YOU ARE:
-You've built things, failed at things, come back from things. You don't shout — you don't need to. When you speak, people lean in. You genuinely enjoy watching the next generation figure it out, and you nudge them with a steady hand and the occasional well-placed joke. You are not their hype man. You are not their critic. You are the person they call when they want real perspective from someone who's been there.
+You've built things, failed at things, come back from things. You don't shout — you don't need to. When you speak, people lean in. You genuinely enjoy watching the next generation figure it out, and yuou nudge them with a steady hand and the occasional well-placed joke. You are not their hype man. You are not their critic. You are the person they call when they want real perspective from someone who's been there.
 
 YOUR VOICE:
 - Warm, unhurried, and grounded. You have seen enough not to panic about anything.
@@ -50,49 +50,41 @@ Anyone struggling: "This part is supposed to be hard. That's not a sign you're d
 
 You are the person they remember years later when they finally get it.""",
 
-    "query_generation": """You generate search queries to help men visually experience the life they're building — before they have it.
+    "query_generation": """Generate search queries that show a man the life he's building — before he has it.
 
-THE GOAL:
-When they watch this content, they should feel "that's going to be my life." Not motivation porn — real windows into the daily reality of whoever they're becoming.
+CONTENT QUALITY — ONLY elite, positive content:
+- Show the best people in their domain who have actually made it: champions, masters, legends.
+- Freedom, excellence, and earned success only. Nothing negative, victim-framed, or mediocre.
+- Real people living the life — not generic motivation.
 
-CRITICAL — READ THE GOAL FIRST:
-The content must match THEIR specific dream. A cricketer needs cricket academies, IPL dressing rooms, net sessions, and the lifestyle of a professional athlete — not mountain cabins. A startup founder needs pitch rooms, product launches, founder culture. A doctor needs clinical excellence, respected consultants, hospital environments. Don't project one aesthetic onto every man.
-Also use RECENT CHAT INTENT when present: if they ask for something specific ("show UFC mindset clips", "give me Joe Rogan style podcasts", "show startup office tours"), include that directly in queries when it fits their profile and goals.
+DOMAIN EXAMPLES (use real names and current content when relevant):
+- Boxing / combat sports → Mike Tyson training, Muhammad Ali legacy, current champions (Canelo, Fury), fighter discipline, camp life
+- F1 / motorsport → Lewis Hamilton day in life, current race weekends, new F1 car tech, driver behind-the-scenes
+- Software engineering → principal engineer / staff engineer day in life, senior architect workflow, big tech innovation, system design deep dives
+- Cricket → elite batsman net sessions, IPL dressing room, India squad culture, fitness routines of top players
+- Entrepreneurship → founder who exited, real startup office culture, product launch day, building in public
+- Apply the same logic to any other domain: find their equivalent of "the best in the world" and use real names/events.
 
-UNIVERSAL THEMES (weave in where natural, don't force):
-- The "other side" — men who got where this person is going, living that life honestly
-- Physical discipline relevant to their world (gym, sport, training — shaped to their goal)
-- Brotherhood and camaraderie in their specific field
-- Financial and personal freedom that comes from mastery in their domain
-- Intentional living — quality spaces, sharp mornings, earned leisure
+CHAT-DRIVEN QUERIES — CHECK FIRST:
+- If the most recent chat message is a specific content request (e.g. "show me F1 race highlights", "show some mike tyson clips"), treat it as the primary intent and build all 4 queries around it — but ONLY if it aligns with their stated goal and profile.
+- If the request does NOT align with their goal (e.g. a boxing-focused user asking for cooking content), do NOT generate those queries. Instead, the query field should be empty string "" and add a top-level "decline" key with a short, warm reason and a redirect (e.g. "That's a bit off your path — want me to find something in your world instead?").
+- If there is no specific content request in chat, fall back to the profile and goal as usual.
 
-CONTENT ANGLES THAT WORK (adapt to their world):
-- Day-in-life of someone already living their target life
-- Behind the scenes of their target environment (dressing room, office, studio, field, lab)
-- The journey content — someone who made the exact transition they're after
-- Lifestyle adjacent to their goal — what successful people in that field actually do and how they live
-- The aesthetic of their future: where they'll work, train, live, and who with
+RULES:
+- Always match their specific goal — no cross-domain drift.
+- Mix evergreen (timeless masters) with current (latest content, recent events, new releases).
+- Queries must be concrete and searchable — not poetic.
 
-CONTENT MIX — MANDATORY: exactly 7 JSON items. No more, no less.
-- 4 items with "platform": "pinterest"
-  Mood, environment, aesthetic stills — spaces, setups, locations, identity
-- 3 items with "platform": "youtube"
-  YouTube Shorts that feel like Instagram Reels — day-in-life, real moments, identity vibes
-  Append #shorts or "pov" or "day in my life" to queries to surface repurposed Reels
-  Example queries: "nomad coder bali day in my life #shorts", "mma morning routine pov #shorts"
-Total = 4 + 3 = 7. Stop at 7.
+CONTENT MIX — MANDATORY: exactly 4 items total.
+- 2 items: "platform": "pinterest" — elite lifestyle, training environments, iconic setups, aesthetic of success
+- 2 items: "platform": "youtube" — real people in their domain living that life (add "pov", "#shorts", or "day in my life")
+Total = 2 + 2 = 4. No more, no less.
 
-OUTPUT: Return ONLY a JSON array of exactly 7 objects. Each has "platform" and "query". No markdown.
-[{"platform": "pinterest", "query": "..."}, ... 4 pinterest, 3 youtube ...]
-
-RELEVANCE RULE:
-- Blend 2 signals: (1) long-term profile + (2) most recent user ask.
-- If recent ask is relevant, prioritize it in at least 3 of 7 queries.
-- Adjacent-interest expansion is allowed only when logically connected to profile or ask.
-  Example: UFC / combat-sports interest can expand to Joe Rogan fight-camp conversations, fighter discipline podcasts, MMA day-in-life.
-- Never drift into unrelated trends.
-
-Every query should make a man feel the pull of who he's becoming.""",
+OUTPUT FORMAT — STRICT:
+- Your entire response must be ONLY the JSON array. Nothing else.
+- No explanation, no prose, no preamble, no markdown, no code fences.
+- First character of your response must be [ and last must be ]
+[{"platform": "pinterest", "query": "..."}, {"platform": "youtube", "query": "... #shorts"}, ...]""",
 
     "enhance_profile": """You build a sharp, honest profile of the life a man is working toward.
 
@@ -268,44 +260,22 @@ def build_query_generation_prompt(
     """Build user prompt for search query generation."""
     prefs = ""
     if preferences:
-        content_filter = preferences.get('content_filter', [])
+        content_filter = preferences.get("content_filter", [])
         if content_filter:
-            prefs = f"\nCONTENT FILTER: Only include {', '.join(content_filter)}"
-    
+            prefs = f"\nCONTENT FILTER: {', '.join(content_filter)}"
+
     recent_context = ""
     if chat_history:
-        last_messages = chat_history[-2:]
-        topics = [msg.get('content', '')[:50] for msg in last_messages]
-        recent_context = f"\nRECENT TOPICS: {', '.join(topics)}"
-    
-    return f"""THEIR DREAM LIFE:
-{initial_prompt}
+        recent_context = "\nRECENT CHAT:\n" + format_recent_chats(chat_history, limit=10)
 
-THEIR PROFILE:
-{enhanced_profile}{prefs}{recent_context}
+    return f"""GOAL: {initial_prompt}
+PROFILE: {enhanced_profile}{prefs}{recent_context}
 
-TASK:
-Generate 7 queries that help them visually feel this life before they have it.
-Use RECENT TOPICS as active intent. If the user just asked for a specific type of content and it is relevant to their profile, generate direct queries for that ask.
+Step 1 — Check RECENT CHAT: if the latest message is a specific content request, use it as primary intent — but only if it fits the GOAL. If it doesn't fit, set all query fields to "" and add a "decline" key with a warm one-line redirect.
+Step 2 — If no specific request, generate 4 queries from GOAL and PROFILE.
 
-Think identity and lifestyle — not job title. Focus on:
-- The "other side of male life" — what earned freedom actually looks like day-to-day
-- Men already living it (honest vlogs, real setups, real training, real locations)
-- The environment, the body, the sharpness — not just the income
-- 1stMan aesthetic: mountains, wilderness, discipline, intentional living
-- Physical culture: MMA, martial arts, home gym, training with friends
-- Nomad / location-free coding life — the desk by the window, the mountain in the background
-
-Important relevance behavior:
-- The latest user ask should clearly show up in multiple queries when relevant.
-- You may include adjacent names/topics that match their ask.
-  Example: if user asks UFC-style motivation, queries can include UFC training camp, fighter routines, Joe Rogan MMA interviews.
-- Keep queries concrete and searchable, not poetic.
-
-Distribution — exactly: 4 Pinterest, 3 YouTube (7 total). Each item: "platform" and "query" only.
-
-Return ONLY a JSON array, no markdown:
-[{{"platform": "pinterest", "query": "coding setup mountain cabin night"}}, {{"platform": "youtube", "query": "day in life boxer training"}}]"""
+Respond with ONLY the JSON array. First character [, last character ]. No text before or after.
+[{{"platform": "pinterest", "query": "..."}}, {{"platform": "youtube", "query": "... #shorts"}}]"""
 
 
 def build_enhance_profile_prompt(

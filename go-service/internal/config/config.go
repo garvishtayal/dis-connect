@@ -12,11 +12,14 @@ import (
 
 // AppConfig holds environment-driven configuration.
 type AppConfig struct {
-	Port                   string
-	DatabaseURL            string
-	RedisAddr              string
-	AgentBaseURL           string
+	Port                    string
+	DatabaseURL             string
+	RedisAddr               string
+	AgentBaseURL            string
 	FirebaseCredentialsPath string
+	// PinterestProxyURL is an optional HTTP proxy URL passed to Pinterest workers.
+	// Leave empty to scrape without a proxy (suitable for development).
+	PinterestProxyURL string
 }
 
 // LoadAppConfig reads configuration from environment with sane defaults.
@@ -26,13 +29,15 @@ func LoadAppConfig() *AppConfig {
 	redisAddr := getEnv("REDIS_ADDR", "localhost:6379")
 	agentBaseURL := getEnv("AGENT_BASE_URL", "http://localhost:8000")
 	firebasePath := getEnv("FIREBASE_CREDENTIALS_PATH", "")
+	pinterestProxy := getEnv("PINTEREST_PROXY_URL", "")
 
 	return &AppConfig{
-		Port:                   port,
-		DatabaseURL:            dbURL,
-		RedisAddr:              redisAddr,
-		AgentBaseURL:           agentBaseURL,
+		Port:                    port,
+		DatabaseURL:             dbURL,
+		RedisAddr:               redisAddr,
+		AgentBaseURL:            agentBaseURL,
 		FirebaseCredentialsPath: firebasePath,
+		PinterestProxyURL:       pinterestProxy,
 	}
 }
 

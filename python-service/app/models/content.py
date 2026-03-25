@@ -12,8 +12,3 @@ class ContentItem(BaseModel):
     title: str
     score: float = 0.0
     metadata: dict[str, Any] | None = None
-
-
-# Response body for /agent/generate-content (items relaxed to Any for testing raw_per_query).
-class GenerateContentResponse(BaseModel):
-    items: list[Any]

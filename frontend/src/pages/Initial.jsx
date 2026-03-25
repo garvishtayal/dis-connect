@@ -13,7 +13,11 @@ const PROMPT_TO_COPY = `I'm building a personalized content feed for someone and
 4. What kind of person do I want to become?
 5. What topics, hobbies, or areas do I enjoy consuming content about?
 
-Write it in third person, as if describing me to someone who's curating content for me. Be specific, not generic.`
+Write it in third person, as if describing me to someone who's curating content for me. Be specific, not generic.
+
+talk about what his human characteristic is, pull from older chat not just latest things, his true self
+
+`
 
 function InitialPage() {
   const navigate = useNavigate()
