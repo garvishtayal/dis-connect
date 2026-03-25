@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Masonry from 'react-responsive-masonry'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -42,6 +42,7 @@ export function ContentFeed() {
   const [isFetchingMore, setIsFetchingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [errorCount, setErrorCount] = useState(0)
+  const fetchingRef = useRef(false)
   const { user, loading: isAuthLoading } = useAuthState()
   const userId = getStoredUserId()
   const limit = 100
@@ -51,6 +52,8 @@ export function ContentFeed() {
     if (append && !hasMore) return { ok: false, count: 0 }
     if (!force && errorCount >= MAX_RETRIES) return { ok: false, count: 0 }
 
+    if (append && fetchingRef.current) return { ok: false, count: 0 }
+    if (append) fetchingRef.current = true
     const setFlag = append ? setIsFetchingMore : setIsLoading
     setFlag(true)
     try {
@@ -87,6 +90,7 @@ export function ContentFeed() {
       toast.error(err?.message || 'Failed to fetch content.', { duration: 4000 })
       return { ok: false, count: 0 }
     } finally {
+      if (append) fetchingRef.current = false
       setFlag(false)
     }
   }
