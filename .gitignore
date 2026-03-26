@@ -33,6 +33,7 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+python-service/data/
 
 # Go (root-level artifacts)
 bin/

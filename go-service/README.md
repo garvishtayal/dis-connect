@@ -1,8 +1,29 @@
 # dis-connect Go Service
 
-This service is the **main API** for dis-connect. It handles **auth**, **users**, **content feed**, **chat**, and **preferences**, and delegates agent/content logic to the **Python service**.
+The **main API** for dis-connect. It handles authentication, user onboarding, the content feed, chat, and upgrade flows. It is the orchestration brain of the system — all content generation, caching, queuing, and deduplication happen here. The Python service is called only for LLM tasks and scraping execution.
 
-It is built with **Gin** and follows a layered structure: handlers → services → repositories / external clients.
+Built with **Gin** and follows a strict layered structure: HTTP handlers → services → repositories and external clients.
+
+---
+
+## How it fits in the system
+
+```
+Frontend
+   │
+   ▼
+Go Service  ──── LLM tasks (query gen, chat, soul) ────►  Python Service
+   │                                                          │
+   ├── content orchestration                          /agent/generate-queries
+   │     Redis queues + worker pools                  /agent/chat
+   │     aggregator + mixer                           /agent/understand-soul
+   │     dedup + rate limits                         /scraper/youtube
+   │                                                  /scraper/pinterest
+   ├── Postgres  (users, chat history, preferences)
+   └── Redis     (queues, cache, dedup, rate limits)
+```
+
+The Go service owns all business logic. Python is a thin executor.
 
 ---
 
@@ -12,171 +33,222 @@ It is built with **Gin** and follows a layered structure: handlers → services 
 go-service/
 ├── cmd/
 │   └── api/
-│       └── main.go
+│       └── main.go                 entrypoint — starts Gin server
 ├── internal/
-│   ├── api/
-│   │   ├── handlers/
-│   │   │   ├── auth.go
-│   │   │   ├── chat.go
-│   │   │   ├── content.go
-│   │   │   ├── health.go
-│   │   │   └── user.go
-│   │   ├── middleware/
-│   │   │   ├── cors.go
-│   │   │   ├── firebase_auth.go
-│   │   │   ├── logger.go
-│   │   │   ├── onboarding.go
-│   │   │   └── rate_limit.go
-│   │   └── router.go
 │   ├── app/
-│   │   └── app.go
+│   │   └── app.go                  bootstrap: wires all deps, starts worker pools, builds router
+│   ├── api/
+│   │   ├── router.go               registers all routes
+│   │   ├── handlers/
+│   │   │   ├── auth.go             sign-in with Google / Apple
+│   │   │   ├── user.go             create user (onboarding)
+│   │   │   ├── content.go          GET /api/content
+│   │   │   ├── chat.go             POST /api/chat
+│   │   │   ├── upgrade.go          upgrade plan endpoints
+│   │   │   └── health.go           GET /healthz
+│   │   └── middleware/
+│   │       ├── firebase_auth.go    validates Firebase ID token
+│   │       ├── onboarding.go       requires completed onboarding
+│   │       ├── cors.go
+│   │       ├── logger.go
+│   │       └── rate_limit.go
 │   ├── agent/
-│   │   └── agent.go
+│   │   └── agent.go                HTTP client → Python LLM endpoints
 │   ├── auth/
-│   │   ├── firebase.go
-│   │   └── token_validator.go
+│   │   ├── firebase.go             Firebase app init
+│   │   └── token_validator.go      Firebase ID token verification
 │   ├── config/
-│   │   └── config.go
-│   ├── models/
-│   │   ├── auth.go
-│   │   ├── chat.go
+│   │   └── config.go               loads env vars into AppConfig
+│   ├── content/                    all content-generation machinery
+│   │   ├── aggregator/
+│   │   │   └── aggregator.go       polls Redis until all scrape jobs done
+│   │   ├── mixer/
+│   │   │   └── mixer.go            mix + rank + dedup by ratio
+│   │   ├── queue/
+│   │   │   ├── jobs.go             ScrapeJob struct
+│   │   │   └── redis_queue.go      LPUSH / BRPOP queue operations
+│   │   ├── scraper/
+│   │   │   └── client.go           HTTP client → Python /scraper/* endpoints
+│   │   └── worker/
+│   │       └── pool.go             YouTube pool (5) + Pinterest pool (2, 1.5s delay)
+│   ├── models/                     shared domain types
+│   │   ├── user.go
 │   │   ├── content.go
+│   │   ├── chat.go
+│   │   ├── auth.go
 │   │   ├── search.go
-│   │   └── user.go
+│   │   └── upgrade.go
 │   ├── repository/
 │   │   ├── postgres/
 │   │   │   ├── client.go
-│   │   │   ├── chat_repository.go
-│   │   │   ├── content_repository.go
 │   │   │   ├── user_repository.go
+│   │   │   ├── chat_repository.go
 │   │   │   ├── preference_repository.go
-│   │   │   └── migrations/
+│   │   │   ├── upgrade_repository.go
+│   │   │   └── migrate.go          auto-runs SQL migrations on startup
 │   │   └── redis/
 │   │       ├── client.go
-│   │       └── dedup_repository.go
+│   │       ├── dedup_repository.go
+│   │       ├── rate_limit_repository.go
+│   │       ├── request_state_repository.go
+│   │       └── search_cache_repository.go
 │   └── service/
-│       ├── auth_service.go
-│       ├── chat_service.go
 │       ├── content_service.go
-│       └── user_service.go
+│       ├── chat_service.go
+│       ├── auth_service.go
+│       ├── user_service.go
+│       ├── upgrade_service.go
+│       └── user_id_resolver.go
 ├── .env.example
 ├── Dockerfile
-├── go.mod
-└── go.sum
+└── go.mod
 ```
-
----
-
-## Top-level files
-
-- **`cmd/api/main.go`**: Entrypoint. Resolves port from config, builds the router via `app.BuildRouter()`, and runs the Gin server.
-- **`Dockerfile`**: Multi-stage build (Go 1.22 Alpine → distroless). Produces a single `server` binary; exposes port 8080.
-- **`go.mod`** / **`go.sum`**: Go module and dependencies (Gin, Firebase, PostgreSQL, Redis, etc.).
-- **`.env.example`**: Example environment variables for local and deployment.
 
 ---
 
 ## Configuration
 
-**`internal/config/config.go`** loads configuration from the environment (with defaults):
+`internal/config/config.go` reads from environment on startup:
 
 | Variable | Description | Default |
-|----------|-------------|---------|
+|---|---|---|
 | `PORT` | HTTP server port | `8080` |
-| `DATABASE_URL` | PostgreSQL connection string | `postgres://postgres:postgres@localhost:5432/dis_connect?sslmode=disable` |
+| `DATABASE_URL` | Postgres connection string | `postgres://postgres:postgres@localhost:5432/dis_connect?sslmode=disable` |
 | `REDIS_ADDR` | Redis address | `localhost:6379` |
-| `AGENT_BASE_URL` | Base URL of the Python agent service | `http://localhost:8000` |
-| `FIREBASE_CREDENTIALS_PATH` | Path to Firebase service account JSON | (required, no default) |
-
-Helpers: **`NewPostgresDB(cfg)`** and **`NewRedisClient(cfg)`** create DB and Redis clients from `AppConfig`.
-
----
-
-## `internal/app/app.go`
-
-- **`BuildRouter()`**: Loads `.env`, validates Firebase credentials, creates Firebase client and token validator, Postgres client, repositories, and the **agent client** (using `AGENT_BASE_URL`), then wires all services and handlers. Attaches global middleware (logger, CORS), then registers all API routes. Returns the Gin engine or an error.
-- **`ResolvePort()`**: Returns the port string for the server (used by `main`).
-
-Use this file to add more middleware, new services, or change wiring.
+| `AGENT_BASE_URL` | Python service base URL | `http://localhost:8000` |
+| `FIREBASE_CREDENTIALS_PATH` | Path to Firebase service account JSON | required |
+| `PINTEREST_PROXY_URL` | Optional HTTP proxy URL for Pinterest workers | `""` |
 
 ---
 
-## API routes (`internal/api/router.go`)
+## Startup — `internal/app/app.go`
 
-All routes are registered here. Protected routes require a valid **Firebase ID token** in `Authorization: Bearer <token>`. Some routes also require **onboarding completed** (user created with initial prompt).
+`BuildRouter()` is the single bootstrap function. It:
 
-| Method | Path | Auth | Onboarding | Handler | Description |
-|--------|------|------|------------|---------|-------------|
-| GET | `/healthz` | — | — | Health | Health check. Returns `{"status": "ok"}`. |
-| POST | `/api/auth/google` | — | — | Auth | Sign in with Google (ID token). |
-| POST | `/api/auth/apple` | — | — | Auth | Sign in with Apple (ID token). |
-| POST | `/api/users` | Firebase | — | User | Create user (onboarding). Body: `initial_prompt`. Calls Python **understand-soul**; stores user and soul. |
-| POST | `/api/chat` | Firebase | Required | Chat | Send chat message. Calls Python **agent/chat**, may also trigger content generation. |
-| GET | `/api/content` | Firebase | Required | Content | Get content feed. Query: `user_id`, optional `limit`, `offset`. Calls Python **agent** `/agent/generate-content` with user profile from Postgres. |
-
-**CORS** and **request logging** are applied globally. Per-user daily rate limits for chat and content are enforced in the services using Redis.
-
----
-
-## Handlers (`internal/api/handlers/`)
-
-- **`health.go`**: `GET /healthz` → `{"status": "ok"}`.
-- **`auth.go`**: `SignInWithGoogle`, `SignInWithApple` — bind `AuthRequest`, call `AuthService`, return token/user info.
-- **`user.go`**: `CreateUser` — requires Firebase UID from context, binds `CreateUserRequest` (e.g. `initial_prompt`), calls `UserService.CreateUser` (which calls Python **understand-soul** and persists user).
-- **`chat.go`**: `HandleChat` — binds `ChatRequest`, calls `ChatService.HandleChat` (calls Python **agent/chat**, may attach new content).
-- **`content.go`**: `GetContent` — binds query to `ContentRequest` (`user_id`, `limit`, `offset`), calls `ContentService.GetContent` (agent generate-content + user profile from Postgres).
+1. Loads `.env` (once)
+2. Validates Firebase credentials file is readable
+3. Creates Firebase client + token validator
+4. Connects to Postgres, runs auto-migrations
+5. Creates all Postgres repositories (user, chat, preference, upgrade)
+6. Connects to Redis, creates all Redis repositories (dedup, rate limit, request state, search cache)
+7. Creates the Redis queue, Python scraper HTTP client, and aggregator
+8. **Starts background worker pools** (YouTube: 5 goroutines, Pinterest: 2 goroutines — run for the lifetime of the process)
+9. Creates all services and handlers
+10. Wires and returns the Gin engine
 
 ---
 
-## Middleware (`internal/api/middleware/`)
+## API routes
 
-- **`logger.go`**: Request logging.
-- **`cors.go`**: CORS configuration.
-- **`rate_limit.go`**: Currently a no-op placeholder for potential future global rate limiting.
-- **`firebase_auth.go`**: Validates `Authorization: Bearer <token>` with Firebase, sets `firebase_uid`, `email`, `provider`, `claims` in context. **`RequireFirebaseUID(c)`** extracts UID for handlers.
-- **`onboarding.go`**: **OnboardingRequired** — after Firebase auth, checks Postgres that the user has completed onboarding; returns 403 if not. Applied to chat, content, and preferences.
+All routes live in `internal/api/router.go`.
 
----
+| Method | Path | Auth | Onboarding | Description |
+|---|---|---|---|---|
+| GET | `/healthz` | — | — | Returns `{"status":"ok"}` |
+| POST | `/api/auth/google` | — | — | Sign in with Google Firebase token |
+| POST | `/api/auth/apple` | — | — | Sign in with Apple Firebase token |
+| POST | `/api/users` | Firebase | — | Create user during onboarding. Calls Python `/agent/understand-soul` to derive enhanced profile, persists user |
+| GET | `/api/content` | Firebase | ✓ | Fetch content feed (queue-based, see below) |
+| POST | `/api/chat` | Firebase | ✓ | Send chat message. LLM reply + optional content refresh signal |
+| POST | `/api/upgrade` | Firebase | ✓ | Upsert user upgrade plan |
+| GET | `/api/upgrade` | Firebase | ✓ | Get user upgrade plan |
 
-## Auth (`internal/auth/`)
+**Firebase auth** middleware validates the `Authorization: Bearer <token>` header and sets `firebase_uid` in context.
 
-- **`firebase.go`**: **`NewFirebaseClient(ctx)`** — builds Firebase app from `FIREBASE_CREDENTIALS_PATH` (service account file).
-- **`token_validator.go`**: **`NewTokenValidator(ctx, firebaseClient)`** — creates validator; **`VerifyIDToken(ctx, idToken)`** returns Firebase token claims.
-
-Used by **AuthService** (sign-in) and **FirebaseAuth** middleware (protected routes).
-
----
-
-## Agent client (`internal/agent/agent.go`)
-
-HTTP client for the **Python agent service** (base URL from `AGENT_BASE_URL`). Used by **UserService**, **ContentService**, and **ChatService`.
-
-- **`NewClient(baseURL)`**: Builds client with a timeout suitable for generate-content/chat.
-- **`UnderstandSoul(ctx, req)`** → **`UnderstandSoulResponse`**: `POST /agent/understand-soul` — request: `user_id`, `initial_prompt`, `recent_chats`; response: `user_id`, `soul`.
-- **`GenerateContent(ctx, req)`** → **`GenerateContentResponse`**: `POST /agent/generate-content` — full request (user_id, initial_prompt, enhanced_profile, preferences, recent_chats, limit); response: `items` (content list).
--- **`Chat(ctx, req)`** → **`ChatResponse`**: `POST /agent/chat` — request: user_id, message, initial_prompt, enhanced_profile, preferences, recent_chats; response: `chat_response`, `needs_new_content`.
-
-Request/response types are defined in this package and mirror the Python agent contract.
+**Onboarding** middleware checks Postgres that `onboarding_completed = true` before allowing access to content and chat.
 
 ---
 
-## Models (`internal/models/`)
+## Content generation flow — `internal/service/content_service.go`
 
-- **`user.go`**: **`User`** (id, firebase_uid, email, display_name, photo_url, provider, initial_prompt, onboarding_completed, soul). **`CreateUserRequest`** / **`CreateUserResponse`** for onboarding.
-- **`content.go`**: **`ContentItem`** (id, type, platform, url, title, score, metadata). **`ContentRequest`** (user_id, limit, offset) for GET /api/content.
-- **`chat.go`**: **`ChatMessage`**, **`ChatRequest`** (user_id, message), **`ChatResponse`** (chat_response, needs_new_content, new_content).
-- **`auth.go`**: **`AuthRequest`**, **`AuthResponse`**, auth provider constants.
+This is the heart of the system. Every `GET /api/content` request goes through this flow:
 
-These types are used by handlers, services, and agent contracts.
+```
+1. Resolve internal user ID (Firebase UID → Postgres user ID)
+2. Check daily rate limit (Redis counter — 10 requests/day)
+3. Load user profile from Postgres (initial_prompt, enhanced_profile, preferences)
+4. Call Python /agent/generate-queries — LLM returns 4 queries (2 Pinterest, 2 YouTube)
+5. For each query:
+     - Cache hit  → add items to cachedItems immediately
+     - Cache miss → create ScrapeJob and push to Redis queue
+6. If any pending jobs:
+     - Init request state in Redis (total job count)
+     - Push jobs to queue:youtube or queue:pinterest
+     - Aggregator polls Redis every 300ms until all jobs done or 8s timeout
+7. Load user's shown URLs from Redis dedup set
+8. mixer.Mix(cachedItems + scraped, shownURLs, limit)
+     Ratio: 40% Pinterest images | 40% YouTube shorts | 20% YouTube videos
+     Fresh content first; up to 40% of already-shown allowed to repeat
+9. Persist returned URLs to Redis dedup set (MarkShownBatch)
+10. Return items
+```
+
+**Cold request** (no cache): ~4 seconds. **Cache hit**: under 1 second.
 
 ---
 
-## Services (`internal/service/`)
+## Worker pools — `internal/content/worker/pool.go`
 
-- **`auth_service.go`**: **AuthService** — sign-in with Google/Apple; validates token, creates or finds user, returns auth response.
-- **`user_service.go`**: **UserService** — **CreateUser**: optionally calls **agent.UnderstandSoul** to get soul from initial prompt, then persists user via **UserRepository** (SetInitialPromptByFirebaseUID). Returns **CreateUserResponse** (user_id, soul, onboarding_completed).
-- **`content_service.go`**: **ContentService** — **GetContent**: loads user profile (initial_prompt, enhanced_profile, preferences) via **UserRepository.GetContentProfileByUserID**, builds **agent.GenerateContentRequest**, calls **agent.Client.GenerateContent** (Python `/agent/generate-content`), returns items; applies offset client-side.
-- **`chat_service.go`**: **ChatService** — **HandleChat**: loads user profile, calls **agent.Client.Chat** (Python `/agent/chat`), records chat history, may fetch new content, and periodically updates preferences in Postgres via the Python preferences endpoint.
+Two pools start at boot and run forever:
+
+**YouTube pool** — 5 goroutines
+- Blocks on `BRPOP queue:youtube` (2s timeout, loops back if empty)
+- Calls Python `POST /scraper/youtube` with the query
+- Stores results in Redis search cache + request results list
+- Increments `req:{id}:done` counter
+
+**Pinterest pool** — 2 goroutines
+- Same flow but on `queue:pinterest`
+- Enforces a **1.5 second delay** after each job to avoid Pinterest rate limits
+- Accepts an optional proxy URL (set via `PINTEREST_PROXY_URL` env var)
+
+Workers are fire-and-forget goroutines. The aggregator is what connects them back to the waiting HTTP request.
+
+---
+
+## Aggregator — `internal/content/aggregator/aggregator.go`
+
+After jobs are queued, the HTTP handler calls `aggregator.Wait(ctx, requestID, totalJobs, 8s)`.
+
+The aggregator polls `req:{id}:done` in Redis every **300ms**. When `done >= total`, or the 8-second timeout elapses, it reads all results from `req:{id}:results` and returns them. On timeout it returns whatever partial results are available — the request never blocks indefinitely.
+
+---
+
+## Mixer — `internal/content/mixer/mixer.go`
+
+Takes the flat pool of all items (cached + freshly scraped) and produces the final ordered list:
+
+- **Bucketing**: items split into `images` (Pinterest), `shorts`, `videos` (YouTube)
+- **Ratio**: 40% images, 40% shorts, 20% videos (of `limit`)
+- **Ranking**: YouTube items preserve API relevance order within each bucket
+- **Deduplication**: within-batch URL dedup; cross-request dedup against `shownURLs`
+- **Repeat allowance**: up to 40% of the result can be already-shown content (so the feed doesn't go empty after a few requests)
+
+---
+
+## Chat — `internal/service/chat_service.go`
+
+`HandleChat` flow:
+1. Resolves internal user ID
+2. Checks daily rate limit (20 messages/day per user)
+3. Loads user profile + last 5 chat messages from Postgres
+4. Calls Python `/agent/chat` → LLM reply + `needs_new_content` flag
+5. Saves both user and agent messages to Postgres chat history
+6. Every 5th message: **background goroutine** calls Python `/agent/prefrences` to update the user's content preference JSON in Postgres (non-blocking)
+7. Returns reply immediately; if `needs_new_content=true`, the frontend is expected to trigger a new `GET /api/content`
+
+---
+
+## Agent client — `internal/agent/agent.go`
+
+HTTP client for all Python LLM endpoints. Uses a 90-second timeout.
+
+| Method | Python endpoint | Used by |
+|---|---|---|
+| `GenerateQueries` | `POST /agent/generate-queries` | ContentService |
+| `UnderstandSoul` | `POST /agent/understand-soul` | UserService |
+| `Chat` | `POST /agent/chat` | ChatService |
+| `Preferences` | `POST /agent/prefrences` | ChatService (background) |
 
 ---
 
@@ -184,63 +256,55 @@ These types are used by handlers, services, and agent contracts.
 
 ### Postgres (`internal/repository/postgres/`)
 
-- **`client.go`**: **`NewClient(cfg)`** — wraps **config.NewPostgresDB**; used by all Postgres repos.
-- **`user_repository.go`**: User CRUD; **SetInitialPromptByFirebaseUID** (create or update user with initial prompt and enhanced profile); **IsOnboardingCompletedByFirebaseUID** for onboarding middleware; **GetContentProfileByUserID** (initial_prompt, enhanced_profile, preferences) for the content service to call the agent generate-content API.
-- **`chat_repository.go`**: Chat message history (if used).
-- **`content_repository.go`**: Content cache / shown content (if used).
-- **`preference_repository.go`**: Update user `preferences` JSONB in the `users` table.
-- **`migrations/`**: **000001_init_schema** (users, chat_messages, shown_content, content_cache, indexes); **000002** adds **onboarding_completed** to users and makes **initial_prompt** nullable.
-
-Same database can be used for users, chat, and content metadata; Redis is available for cache and dedup (see below).
+- **`user_repository.go`** — create/upsert users; `GetContentProfileByUserID` loads `initial_prompt`, `enhanced_profile`, `preferences` for content and chat; `SetInitialPromptByFirebaseUID` completes onboarding.
+- **`chat_repository.go`** — `SaveMessage`, `ListMessages`, `CountMessages` for chat history.
+- **`preference_repository.go`** — `UpdatePreferences` writes the JSONB preferences column.
+- **`upgrade_repository.go`** — upsert/get upgrade plan rows.
+- **`migrate.go`** — runs embedded SQL migrations automatically on startup via `golang-migrate`.
 
 ### Redis (`internal/repository/redis/`)
 
-- **`client.go`**: **`NewClient(cfg)`** — wraps **config.NewRedisClient**.
-- **`dedup_repository.go`**: **MarkShown(userID, url)**, **WasShown(userID, url)** — set/key `shown:{userID}` (e.g. for content dedup). Wired into `ContentService` to track which URLs have been shown.
-- **`rate_limit_repository.go`**: **RateLimitRepository** — per-key daily counters based on Redis `INCR` + `EXPIRE`; used by `ChatService` and `ContentService` to enforce per-user chat and content quotas.
+- **`dedup_repository.go`** — `GetShownURLs` / `MarkShownBatch` for cross-request content deduplication. Key: `user:{uid}:shown`.
+- **`rate_limit_repository.go`** — `AllowDaily(key, limit)` using Redis `INCR` + `EXPIRE`. Used for both chat (20/day) and content (10/day) quotas.
+- **`request_state_repository.go`** — `Init`, `IncrDone`, `AppendResults`, `GetProgress`, `GetResults`. Manages per-request worker progress. Keys: `req:{id}:total`, `req:{id}:done`, `req:{id}:results` (5-minute TTL).
+- **`search_cache_repository.go`** — `Get` / `Set` for scrape result caching by platform + query. Key: `search:{sha256_hash[:16]}` (1-hour TTL).
+
+---
+
+## Redis key schema
+
+| Key pattern | Type | TTL | Purpose |
+|---|---|---|---|
+| `queue:youtube` | List | — | YouTube scrape job queue |
+| `queue:pinterest` | List | — | Pinterest scrape job queue |
+| `req:{id}:total` | String | 5 min | Total jobs for a request |
+| `req:{id}:done` | String | 5 min | Completed job counter |
+| `req:{id}:results` | List | 5 min | Scraped result items (JSON) |
+| `search:{hash}` | String | 1 hour | Scrape result cache |
+| `user:{uid}:shown` | Set | — | Shown URL dedup set per user |
+| `rl:content:{uid}:{date}` | String | 1 day | Content rate limit counter |
+| `rl:chat:{uid}:{date}` | String | 1 day | Chat rate limit counter |
 
 ---
 
 ## How to run
 
-1. **Environment**
+```bash
+# From go-service/
+cp .env.example .env
+# Fill in: FIREBASE_CREDENTIALS_PATH, DATABASE_URL, REDIS_ADDR, AGENT_BASE_URL
 
-   Copy `.env.example` to `.env` and set at least:
+go run ./cmd/api
+```
 
-   - `FIREBASE_CREDENTIALS_PATH` — path to your Firebase service account JSON.
-   - `DATABASE_URL` — Postgres connection string.
-   - Optionally `REDIS_ADDR`, `AGENT_BASE_URL`, `PORT`.
+- Server starts on port `8080` by default
+- Postgres migrations run automatically on startup
+- Worker pools start automatically at boot
+- Health check: `http://localhost:8080/healthz`
 
-2. **Database**
+**Docker:**
 
-   SQL migrations under `internal/repository/postgres/migrations/` run **automatically** on API startup (`golang-migrate`, embedded in the binary). No manual `psql` step is required.
-
-3. **Run the server**
-
-   From the **`go-service/`** directory:
-
-   ```bash
-   go run ./cmd/api
-   ```
-
-   Default port is **8080**. Health check:
-
-   - **`http://localhost:8080/healthz`**
-
-4. **Docker**
-
-   ```bash
-   docker build -t go-service .
-   docker run -p 8080:8080 --env-file .env go-service
-   ```
-
-   Ensure `.env` (or passed env) includes `FIREBASE_CREDENTIALS_PATH` and `DATABASE_URL`; mount the credentials file if needed.
-
----
-
-## Summary
-
-- **Go service** = main API (Gin): auth (Google/Apple via Firebase), user onboarding (with Python understand-soul), content feed (via agent generate-content + user profile from Postgres), chat (via Python agent) and background preference updates.
-- **Python service** = agent/content engine: understand-soul, generate-content, chat; Go calls it via the **agent client**.
-- **Postgres** = users, onboarding state, chat history, and content metadata.
-- **Redis** = configured; repos for dedup and per-user daily rate limiting are wired in **app.go**.
+```bash
+docker build -t dis-connect-go .
+docker run -p 8080:8080 --env-file .env dis-connect-go
+```
